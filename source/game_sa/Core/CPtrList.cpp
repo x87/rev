@@ -9,14 +9,10 @@ CPtrList::CPtrList() {
     pNode = nullptr;
 }
 
-CPtrNode* CPtrList::GetNode() {
-    return pNode;
-}
-
 // get elements count
 // 0x5521B0
-unsigned int CPtrList::CountElements() {
-    unsigned int counter;
+uint32_t CPtrList::CountElements() {
+    uint32_t counter;
     CPtrNode* currNode = GetNode();
     for (counter = 0; currNode; ++counter) {
         currNode = currNode->pNext;

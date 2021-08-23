@@ -17,9 +17,13 @@ public:
 
     CPtrList();
 
-    inline CPtrNode* GetNode();
-    unsigned int CountElements();
+    uint32_t CountElements();
     bool IsMemberOfList(void* data);
+
+    // NOTSA
+    CPtrNode* GetNode() const {
+        return pNode;
+    }
 };
 
 VALIDATE_SIZE(CPtrList, 0x4);
