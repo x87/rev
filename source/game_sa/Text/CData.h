@@ -3,13 +3,13 @@
 // TDAT block
 class CData {
 public:
-    char* data;
-    uint  size;
+    char*    data;
+    uint32_t size;
 
 public:
     CData();
     ~CData();
 
     void Unload();
-    void Load(uint length, FILESTREAM file, uint* offset, uchar nSkipBytes);
+    bool Load(uint32_t length, FILESTREAM file, uint32_t* offset, bool dontRead);
 };

@@ -3,8 +3,8 @@
 #include "CText.h"
 
 struct tTextOffset {
-    char szMissionName[8];
-    uint offset;
+    char     szMissionName[8];
+    uint32_t offset;
 };
 
 // TABL block
@@ -13,10 +13,10 @@ public:
     static const ushort MAX_MISSION_TEXTS = 200;
 
     tTextOffset data[MAX_MISSION_TEXTS];
-    uint        size;
+    uint32_t    size;
 
 public:
-    CMissionTextOffsets();;
+    CMissionTextOffsets();
 
-    void Load(uint length, FILE* file, uint* offset, uint nSkipBytes);
+    bool Load(uint32_t length, FILE* file, uint32_t* offset, bool dontRead);
 };

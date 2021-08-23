@@ -1,6 +1,7 @@
 #include "StdInc.h"
 
 #include "CData.h"
+#include "GxtChar.h"
 
 CData::CData() {
     data = nullptr;
@@ -18,17 +19,31 @@ void CData::Unload() {
     size = 0;
 }
 
-// nSkipBytes always 0
+#define USE_ORIGINAL_CODE
+
+// dontRead always 0
 // 0x69F5D0
-void CData::Load(uint length, FILESTREAM file, uint* offset, uchar nSkipBytes) {
-    return plugin::CallMethod<0x69F5D0, CData*, uint, FILESTREAM, uint*, uchar>(this, length, file, offset, nSkipBytes);
+bool CData::Load(uint32_t length, FILESTREAM file, uint32_t* offset, bool dontRead) {
+    size = length / sizeof(GxtChar);
+    data = new GxtChar[size];
 
 #ifdef USE_ORIGINAL_CODE
-    // todo: add original code
-#else
-    size = length / sizeof(char);
-    data = new char[size];
+    uint32_t temp = 0;
 
+    if (!length)
+        return true;
+
+    for (uint32_t i = 0; i < size; ++i) {
+        if (!dontRead)
+            if (sizeof(GxtChar) != CFileMgr::Read(file, &temp, sizeof(GxtChar)))
+                return false;
+
+        data[i] = (GxtChar)temp;
+        ++*offset;
+    }
+
+    return true;
+#else
     CFileMgr::Read(file, data, length);
     *offset += length;
 #endif

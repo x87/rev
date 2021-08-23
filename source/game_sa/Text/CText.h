@@ -11,21 +11,21 @@
 #include "CMissionTextOffsets.h"
 
 struct ChunkHeader {
-    char magic[4];
-    int  size;
+    char    magic[4];
+    int32_t size;
 };
 
 VALIDATE_SIZE(ChunkHeader, 0x8);
 
 class CText {
-  public:
+public:
     CKeyArray           m_MainKeyArray;
     CData               m_MainText;
 
     CKeyArray           m_MissionKeyArray;
     CData               m_MissionText;
 
-    uchar               m_nLangCode;
+    uint8_t             m_nLangCode;
     bool                m_bIsMissionTextOffsetsLoaded;
     bool                m_bCdErrorLoaded;
     bool                m_bIsMissionPackLoaded;
@@ -33,9 +33,7 @@ class CText {
     char                m_szCdErrorText[256];
     CMissionTextOffsets m_MissionTextOffsets;
 
-  public:
-    static void InjectHooks();
-
+public:
     CText();
     ~CText();
 
@@ -48,11 +46,14 @@ class CText {
     void LoadMissionText(char* mission);
     void LoadMissionPackText();
 
-  private:
-    bool ReadChunkHeader(ChunkHeader* header, FILESTREAM file, uint* offset, uchar nSkipBytes);
+private:
+    bool ReadChunkHeader(ChunkHeader* header, FILESTREAM file, uint32_t* offset, bool dontRead);
     char GetUpperCase(char unk);
 
-  private:
+private:
+    friend void InjectHooksMain();
+    static void InjectHooks();
+
     CText* Constructor();
     CText* Destructor();
 };

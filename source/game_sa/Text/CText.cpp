@@ -138,30 +138,30 @@ void CText::Load(bool bKeepMissionPack) {
     CFileMgr::SetDir("TEXT");
     FILESTREAM file = CFileMgr::OpenFile(filename, "rb");
 
-    ushort version = 0;
-    ushort encoding = 0;
+    uint16_t version = 0;
+    uint16_t encoding = 0;
     CFileMgr::Read(file, &version, sizeof(version));
     CFileMgr::Read(file, &encoding, sizeof(encoding));
 
-    uint offset = sizeof(ushort) * 2; // skip version and encoding
+    uint32_t offset = sizeof(uint16_t) * 2; // skip version and encoding
     bool bTKEY = false;
     bool bTDAT = false;
     ChunkHeader header{};
     while (!bTKEY || !bTDAT) {
-        ReadChunkHeader(&header, file, &offset, 0);
+        ReadChunkHeader(&header, file, &offset, false);
         if (header.size == 0)
             continue;
 
         if (strncmp(header.magic, CHUNK_TABL, sizeof(header.magic)) == 0) {
-            m_MissionTextOffsets.Load(header.size, file, &offset, 0x58000); // todo: magic
+            m_MissionTextOffsets.Load(header.size, file, &offset, 0x58000); // todo: magic. Android have different value 0x64000
             m_bIsMissionTextOffsetsLoaded = true;
         }
         else if (strncmp(header.magic, CHUNK_TKEY, sizeof(header.magic)) == 0) {
-            m_MainKeyArray.Load(header.size, file, &offset, 0);
+            m_MainKeyArray.Load(header.size, file, &offset, false);
             bTKEY = true;
         }
         else if (strncmp(header.magic, CHUNK_TDAT, sizeof(header.magic)) == 0) {
-            m_MainText.Load(header.size, file, &offset, 0);
+            m_MainText.Load(header.size, file, &offset, false);
             bTDAT = true;
         }
         else {
@@ -236,8 +236,14 @@ void CText::GetNameOfLoadedMissionText(char* outStr) {
 }
 
 // 0x69F940
-bool CText::ReadChunkHeader(ChunkHeader* header, FILESTREAM file, uint* offset, uchar nSkipBytes) {
-    return plugin::CallMethodAndReturn<bool, 0x69F940, CText*, ChunkHeader*, FILESTREAM, uint*, uchar>(this, header, file, offset, nSkipBytes);
+bool CText::ReadChunkHeader(ChunkHeader* header, FILESTREAM file, uint32_t* offset, bool dontRead) {
+    for (uint32_t i = 0; i < sizeof(ChunkHeader); ++i) {
+        if (sizeof(uint8_t) != CFileMgr::Read(file, (uint8_t *)header + i, sizeof(uint8_t))) {
+            return false;
+        }
+        ++*offset;
+    }
+    return true;
 
 #ifdef USE_ORIGINAL_CODE
     // Taken from re3. That not same as original, but do same thing

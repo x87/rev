@@ -7,8 +7,25 @@ CMissionTextOffsets::CMissionTextOffsets() {
 }
 
 // 0x69F670
-void CMissionTextOffsets::Load(uint length, FILESTREAM file, uint* offset, uint nSkipBytes) {
-    return plugin::CallMethod<0x69F670, CMissionTextOffsets*, uint, FILESTREAM, uint*, uint>(this, length, file, offset, nSkipBytes);
+bool CMissionTextOffsets::Load(uint32_t length, FILESTREAM file, uint32_t* offset, bool dontRead) {
+    tTextOffset* pTextOffset = data;
+    size = 0;
+
+    while (true) {
+        if (sizeof(tTextOffset) != CFileMgr::Read(file, pTextOffset, sizeof(tTextOffset))) {
+            return false;
+        }
+        *offset += sizeof(tTextOffset);
+
+        ++pTextOffset;
+        ++size;
+
+        if (uint32_t(pTextOffset - data) >= length / sizeof(tTextOffset)) {
+            break;
+        }
+    }
+
+    return true;
 
 #ifdef USE_ORIGINAL_CODE
     // todo: taken from re3 and not tested!
@@ -26,7 +43,7 @@ void CMissionTextOffsets::Load(uint length, FILESTREAM file, uint* offset, uint 
     }
     size = (unsigned short)entryCount;
 #else
-    size = (ushort) (length / sizeof(tTextOffset));
+    size = (uint16_t) (length / sizeof(tTextOffset));
     CFileMgr::Read(file, (char*)data, sizeof(tTextOffset) * size);
     *offset += sizeof(tTextOffset) * size;
 #endif
