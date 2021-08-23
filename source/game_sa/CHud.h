@@ -81,6 +81,9 @@ public:
     static bool &bDrawingVitalStats;
     static CSprite2d *Sprites; // static CSprite2d Sprites[6]
 
+public:
+    static void InjectHooks();
+
     static void Draw(); // called each frame from Render2dStuff()
     static void DrawAfterFade();
     static void DrawAreaName();
@@ -109,7 +112,7 @@ public:
     static void SetHelpMessageWithNumber(char const* text, int number, bool quickMessage, bool permanent);
     static void SetMessage(char* text);
     static void SetVehicleName(char* name);
-    static void SetZoneName(char* name, unsigned char displayState);
+    static void SetZoneName(char* name, bool display);
     static void Shutdown();
     static void DrawAmmo(CPed* ped, int x, int y, float alpha);
     static void DrawPlayerInfo();

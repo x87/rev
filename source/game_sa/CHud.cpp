@@ -207,14 +207,16 @@ void CHud::SetMessage(char* text) {
     plugin::Call<0x588F60, char*>(text);
 }
 
-// Converted from cdecl void CHud::SetVehicleName(char *name) 0x588F50
+// 0x588F50
 void CHud::SetVehicleName(char* name) {
-    plugin::Call<0x588F50, char*>(name);
+    m_pVehicleName = name;
 }
 
-// Converted from cdecl void CHud::SetZoneName(char *name,uchar displayState) 0x588BB0
-void CHud::SetZoneName(char* name, unsigned char displayState) {
-    plugin::Call<0x588BB0, char*, unsigned char>(name, displayState);
+// 0x588BB0
+void CHud::SetZoneName(char* name, bool display) {
+    if (display || !CGame::currArea && !m_ZoneState ) {
+        m_pZoneName = name;
+    }
 }
 
 // Converted from cdecl void CHud::Shutdown(void) 0x588850
