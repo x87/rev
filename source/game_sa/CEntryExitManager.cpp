@@ -1,5 +1,7 @@
 #include "StdInc.h"
 
+#include "CEntryExitManager.h"
+
 CEntryExit* (&CEntryExitManager::ms_entryExitStack)[4] = *reinterpret_cast<CEntryExit * (*)[4]>(0x96A720);
 bool& CEntryExitManager::ms_bBurglaryHousesEnabled = *reinterpret_cast<bool*>(0x96A730);
 int& CEntryExitManager::ms_oldAreaCode = *reinterpret_cast<int*>(0x96A734);
@@ -91,6 +93,11 @@ void CEntryExitManager::SetAreaCodeForVisibleObjects() {
 // 0x43EFD0
 int CEntryExitManager::GetEntryExitIndex(const char* name, unsigned short enabledFlags, unsigned short disabledFlags) {
     return plugin::CallAndReturn<int, 0x43EFD0, const char*, unsigned short, unsigned short>(name, enabledFlags, disabledFlags);
+}
+
+// 0x43F150
+void CEntryExitManager::GetPositionRelativeToOutsideWorld(CVector& positionInOut) {
+    plugin::Call<0x43F150, CVector&>(positionInOut);
 }
 
 // 0x43F180

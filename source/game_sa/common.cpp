@@ -7,6 +7,7 @@ Do not delete this comment block. Respect others' work!
 #include "StdInc.h"
 
 #include "CDebugMenu.h"
+#include "CUserDisplay.h"
 
 int& g_nNumIm3dDrawCalls = *(int*)0xB73708;
 int gDefaultTaskTime = 9999999; // or 0x98967F a.k.a (one milllion - 1)

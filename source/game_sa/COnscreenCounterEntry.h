@@ -6,25 +6,28 @@
 */
 #pragma once
 
-#include "PluginBase.h"
+#include "CHudColours.h"
+#include "eOnscreenCounter.h"
 
-class  COnscreenCounterEntry {
+class COnscreenCounterEntry {
 public:
-    unsigned int   m_nVarId;
-    unsigned int   m_nMaxVarValue;
-    char           m_szDescriptionTextKey[10];
-    unsigned short m_nType;                     // 0 - counter (%), 1 - line, 2 - conter counter (%/%)
-    char           m_szDisplayedText[42];       // possibly 2b padding?
-    bool           m_bEnabled;
-    bool           m_bFlashWhenFirstDisplayed;
-    unsigned char  m_nColourId;                 // color index from HudColours
+    unsigned int     m_nVarId;
+    unsigned int     m_nMaxVarValue;
+    char             m_szDescriptionTextKey[10];
+    eOnscreenCounter m_nType;
+    char             m_szDisplayedText[42]; // possibly 2b padding?
+    bool             m_bEnabled;
+    bool             m_bFlashWhenFirstDisplayed;
+    eHudColours      m_nColourId;
 
 public:
     static void InjectHooks();
 
-    //! unused
-    void ProcessForDisplayCounter(uint16_t type);
-    //! unused
-    void SetColourID(uint8_t a2);
+    void Init();
+    void Clear();
+
+    void ProcessForDisplayCounter(eOnscreenCounter type);
+    void SetColourID(eHudColours colourId);
 };
+
 VALIDATE_SIZE(COnscreenCounterEntry, 0x44);
