@@ -4,6 +4,16 @@
 #include <vector>
 #include <string>
 
+//#define __InstallReversible(cls, fn) ReversibleHooks::Install(#cls, )
+//#define ReversibleHooksPushClass(cls) __InstallReversible(cls)
+//#define ReversibleHooksPushClass(cls)  \
+//const auto __HiddenHookInstaller = [](auto name, auto installAddress, auto address) { \
+//    ReversibleHooks::Install(##cls, name, installAddress, address); \
+//};
+
+#define InstallReversible(addr, cls, fn) ReversibleHooks::Install(#cls, #fn, addr, &cls::fn)
+#define InstallOLReversible(addr, name, cls, fn) ReversibleHooks::Install(#cls, name, addr, &cls::fn)
+
 enum class eReversibleHookType {
     Simple,
     Virtual
