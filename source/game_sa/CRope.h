@@ -22,7 +22,7 @@ public:
     float    m_mass;
     float    m_totalLength;
     CEntity* m_pRopeHolder;
-    CEntity* m_pAttachedEntity;
+    CPhysical* m_pAttachedEntity;
     CObject* m_pRopeAttachObject;
     float    m_segmentLength;
     uint32   m_nTime;
