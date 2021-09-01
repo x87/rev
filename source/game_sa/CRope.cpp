@@ -8,7 +8,7 @@ void CRope::InjectHooks() {
     // Install("CRope", "UpdateWeightInRope", 0x5561B0, &CRope::UpdateWeightInRope);
     Install("CRope", "Remove", 0x556780, &CRope::Remove);
     Install("CRope", "Render", 0x556800, &CRope::Render);
-    // Install("CRope", "PickUpObject", 0x5569C0, &CRope::PickUpObject);
+    Install("CRope", "PickUpObject", 0x5569C0, &CRope::PickUpObject);
     // Install("CRope", "Update", 0x557530, &CRope::Update);
 }
 
@@ -73,7 +73,7 @@ int8_t CRope::UpdateWeightInRope(float a2, float a3, float a4, int32 a5, float* 
 
 // 0x556780
 void CRope::Remove() {
-    m_type = 0;
+    m_type = eRopeType::NONE;
     if (m_pRopeAttachObject)
         ReleasePickedUpObject();
     if (m_pAttachedEntity) {
@@ -128,7 +128,7 @@ void CRope::Render() {
         RwIm3DEnd();
     }
 
-    if (m_type == 6) {
+    if (m_type == eRopeType::CRANE_MAGNET3) {
         const CVector pos[] = { m_segments[0], {709.32f, 916.20f, 53.0f} };
         for (unsigned i = 0; i < 2; i++) {
             RxObjSpace3DVertexSetPreLitColor(GetVertex(i), &color);
@@ -144,8 +144,35 @@ void CRope::Render() {
 }
 
 // 0x5569C0
-void CRope::PickUpObject(CEntity* a2) {
-    plugin::CallMethod<0x5569C0, CRope*, CEntity*>(this, a2);
+void CRope::PickUpObject(CPhysical* obj) {
+    if (m_pRopeAttachObject == obj)
+        return;
+
+    if (m_pRopeAttachObject)
+        ReleasePickedUpObject();
+
+    obj->RegisterReference(reinterpret_cast<CEntity**>(&m_pAttachedEntity));
+    m_pRopeAttachObject = obj;
+
+    // TODO: Move model => world space translation into CEntity
+    m_pAttachedEntity->SetPosn(obj->GetPosition() + Multiply3x3(obj->GetMatrix(), CVector{
+        {},
+        {},
+        obj->GetColModel()->GetBoundingBox().m_vecMax.z
+    }));
+    m_pAttachedEntity->m_bUsesCollision = false;
+
+    obj->physicalFlags.bAttachedToEntity = true;
+    if (obj->IsVehicle()) {
+        if (obj->m_nStatus == eEntityStatus::STATUS_SIMPLE)
+            obj->m_nStatus = eEntityStatus::STATUS_PHYSICS;
+    } else if (obj->IsObject()) {
+        if (obj->m_bIsStatic || obj->m_bIsStaticWaitingForCollision) {
+            obj->SetIsStatic(false);
+            obj->AddToMovingList();
+            obj->m_nFakePhysics = 0;
+        }
+    }
 }
 
 // 0x557530
