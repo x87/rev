@@ -12,31 +12,34 @@
 class CEntity;
 class CObject;
 
+constexpr auto NUM_ROPE_SEGMENTS{ 32u };
 class  CRope {
 public:
-    CVector        m_avecRopeSegments[32];
-    CVector        m_avecRopeSegmentsReleased[32];
-    int            m_nId;
-    float field_304;
-    float          m_fMass;
-    float          m_fRopeTotalLength;
-    CEntity       *m_pRopeHolder;
-    CObject       *m_pRopeAttachObject;
-    CEntity       *m_pAttachedEntity;
-    float          m_fRopeSegmentLength;
-    unsigned int   m_nTime;
-    unsigned char  m_nNumSegments;
-    unsigned char  m_nRopeType;
-    unsigned char  m_nFlags1;
-    unsigned char  m_nFlags2;
+    CVector  m_segments[NUM_ROPE_SEGMENTS];
+    CVector  m_segmentsReleased[NUM_ROPE_SEGMENTS];
+    int      m_nId;
+    float    field_304;
+    float    m_mass;
+    float    m_totalLength;
+    CEntity* m_pRopeHolder;
+    CObject* m_pRopeAttachObject;
+    CEntity* m_pAttachedEntity;
+    float    m_segmentLength;
+    uint32   m_nTime;
+    uint8    m_nSegments;
+    uint8    m_type;
+    uint8    m_nFlags1;
+    uint8    m_nFlags2;
 
+public:
+    static void InjectHooks();
+
+    int32 ReleasePickedUpObject();
     void CreateHookObjectForRope();
-    void PickUpObject(CEntity* object);
-    void ReleasePickedUpObject();
+    int8 UpdateWeightInRope(float a2, float a3, float a4, int32 a5, float* a6);
     void Remove();
     void Render();
+    void PickUpObject(CEntity* a2);
     void Update();
-    void UpdateWeightInRope(CVector a1, float a2, CVector *a3);
 };
-
 VALIDATE_SIZE(CRope, 0x328);

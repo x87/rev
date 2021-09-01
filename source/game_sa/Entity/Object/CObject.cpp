@@ -773,13 +773,13 @@ void CObject::SetRemapTexture(RwTexture* remapTexture, short txdIndex) {
 // 0x59F380
 float CObject::GetRopeHeight() {
     const auto ropeIndex = CRopes::FindRope(reinterpret_cast<uint32_t>(this));
-    return CRopes::GetRope(ropeIndex).m_fRopeSegmentLength;
+    return CRopes::GetRope(ropeIndex).m_segmentLength;
 }
 
 // 0x59F3A0
 void CObject::SetRopeHeight(float height) {
     const auto ropeIndex = CRopes::FindRope(reinterpret_cast<uint32_t>(this));
-    CRopes::GetRope(ropeIndex).m_fRopeSegmentLength = height;
+    CRopes::GetRope(ropeIndex).m_segmentLength = height;
 }
 
 // 0x59F3C0
@@ -1515,8 +1515,8 @@ void CObject::ProcessControlLogic() {
         if (iRopeInd >= 0)
         {
             auto& pRope = CRopes::GetRope(iRopeInd);
-            nSegments = static_cast<uint8_t>(pRope.m_fRopeSegmentLength * 32.0F);
-            fRopeLengthChange = pRope.m_fMass * pRope.m_fRopeSegmentLength - static_cast<float>(nSegments) * pRope.m_fRopeTotalLength;
+            nSegments = static_cast<uint8_t>(pRope.m_segmentLength * 32.0F);
+            fRopeLengthChange = pRope.m_mass * pRope.m_segmentLength - static_cast<float>(nSegments) * pRope.m_totalLength;
         }
 
         if (m_nModelIndex == ModelIndices::MI_MAGNOCRANE)
