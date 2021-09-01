@@ -22,8 +22,8 @@ public:
     float    m_mass;
     float    m_totalLength;
     CEntity* m_pRopeHolder;
-    CObject* m_pRopeAttachObject;
     CEntity* m_pAttachedEntity;
+    CObject* m_pRopeAttachObject;
     float    m_segmentLength;
     uint32   m_nTime;
     uint8    m_nSegments;
@@ -34,7 +34,7 @@ public:
 public:
     static void InjectHooks();
 
-    int32 ReleasePickedUpObject();
+    void ReleasePickedUpObject();
     void CreateHookObjectForRope();
     int8 UpdateWeightInRope(float a2, float a3, float a4, int32 a5, float* a6);
     void Remove();

@@ -2,18 +2,25 @@
 #include "CRope.h"
 
 void CRope::InjectHooks() {
-    // ReversibleHooks::Install("CRope", "ReleasePickedUpObject", 0x556030, &CRope::ReleasePickedUpObject);
-    // ReversibleHooks::Install("CRope", "CreateHookObjectForRope", 0x556070, &CRope::CreateHookObjectForRope);
-    // ReversibleHooks::Install("CRope", "UpdateWeightInRope", 0x5561B0, &CRope::UpdateWeightInRope);
-    // ReversibleHooks::Install("CRope", "Remove", 0x556780, &CRope::Remove);
-    // ReversibleHooks::Install("CRope", "Render", 0x556800, &CRope::Render);
-    // ReversibleHooks::Install("CRope", "PickUpObject", 0x5569C0, &CRope::PickUpObject);
-    // ReversibleHooks::Install("CRope", "Update", 0x557530, &CRope::Update);
+    using namespace ReversibleHooks;
+    Install("CRope", "ReleasePickedUpObject", 0x556030, &CRope::ReleasePickedUpObject);
+    // Install("CRope", "CreateHookObjectForRope", 0x556070, &CRope::CreateHookObjectForRope);
+    // Install("CRope", "UpdateWeightInRope", 0x5561B0, &CRope::UpdateWeightInRope);
+    // Install("CRope", "Remove", 0x556780, &CRope::Remove);
+    // Install("CRope", "Render", 0x556800, &CRope::Render);
+    // Install("CRope", "PickUpObject", 0x5569C0, &CRope::PickUpObject);
+    // Install("CRope", "Update", 0x557530, &CRope::Update);
 }
 
 // 0x556030
-int32_t CRope::ReleasePickedUpObject() {
-    return plugin::CallMethodAndReturn<int32, 0x556030, CRope*>(this);
+void CRope::ReleasePickedUpObject() {
+    if (m_pRopeAttachObject) {
+        m_pRopeAttachObject->physicalFlags.bAttachedToEntity = false;
+        m_pRopeAttachObject->physicalFlags.b32 = false;
+        m_pRopeAttachObject = 0;
+    }
+    m_pAttachedEntity->m_bUsesCollision = true;
+    m_nFlags1 = 60; // 6th, 7th bits set
 }
 
 // 0x556070
