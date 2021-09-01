@@ -13,7 +13,7 @@ class CEntity;
 class CObject;
 
 // TODO: Find out what CRANE_MAGNET1/2/3/4 is exactly..
-enum class eRopeType {
+enum class eRopeType :uint8 {
     NONE,
     CRANE_MAGNET1,
     CRANE_HARNESS,
