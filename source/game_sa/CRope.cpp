@@ -4,7 +4,7 @@
 void CRope::InjectHooks() {
     using namespace ReversibleHooks;
     Install("CRope", "ReleasePickedUpObject", 0x556030, &CRope::ReleasePickedUpObject);
-    // Install("CRope", "CreateHookObjectForRope", 0x556070, &CRope::CreateHookObjectForRope);
+    Install("CRope", "CreateHookObjectForRope", 0x556070, &CRope::CreateHookObjectForRope);
     // Install("CRope", "UpdateWeightInRope", 0x5561B0, &CRope::UpdateWeightInRope);
     Install("CRope", "Remove", 0x556780, &CRope::Remove);
     Install("CRope", "Render", 0x556800, &CRope::Render);
@@ -23,9 +23,47 @@ void CRope::ReleasePickedUpObject() {
     m_nFlags1 = 60; // 6th, 7th bits set
 }
 
+ModelIndex CRope::GetModelForType() const {
+    using namespace ModelIndices;
+    switch (m_type) {
+    case eRopeType::CRANE_MAGNET1:
+    case eRopeType::CRANE_MAGNET2:
+    case eRopeType::CRANE_MAGNET3:
+    case eRopeType::CRANE_MAGNET4:
+        return MI_CRANE_MAGNET;
+
+    case eRopeType::CRANE_HARNESS:
+        return MI_CRANE_HARNESS;
+
+    case eRopeType::MAGNET:
+        return MI_MINI_MAGNET;
+
+    case eRopeType::WRECKING_BALL:
+        return MI_WRECKING_BALL;
+
+    default: { // NOTSA
+        assert(0);
+        break;
+    }
+    }
+}
+
 // 0x556070
 void CRope::CreateHookObjectForRope() {
-    plugin::CallMethod<0x556070, CRope*>(this);
+    if (m_type == eRopeType::NONE)
+        return;
+
+    CObject* pObj = new CObject((int)GetModelForType(), true);
+    m_pAttachedEntity = pObj;
+
+    pObj->RegisterReference(reinterpret_cast<CEntity**>(&m_pAttachedEntity));
+    pObj->SetPosn(m_segments[NUM_ROPE_SEGMENTS - 1]);
+    pObj->m_nObjectType = eObjectType::OBJECT_TYPE_DECORATION;
+    pObj->SetIsStatic(false);
+    pObj->physicalFlags.bAttachedToEntity = true;
+
+    m_pRopeAttachObject = nullptr;
+    m_nFlags1 = 0;
 }
 
 // 0x5561B0

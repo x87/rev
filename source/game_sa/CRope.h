@@ -12,6 +12,18 @@
 class CEntity;
 class CObject;
 
+// TODO: Find out what CRANE_MAGNET1/2/3/4 is exactly..
+enum class eRopeType : uint8 {
+    NONE,
+    CRANE_MAGNET1,
+    CRANE_HARNESS,
+    MAGNET,
+    CRANE_MAGNET2,
+    WRECKING_BALL,
+    CRANE_MAGNET3,
+    CRANE_MAGNET4
+};
+
 constexpr auto NUM_ROPE_SEGMENTS{ 32u };
 class  CRope {
 public:
@@ -27,7 +39,7 @@ public:
     float    m_segmentLength;
     uint32   m_nTime;
     uint8    m_nSegments;
-    uint8    m_type;
+    eRopeType    m_type;
     uint8    m_nFlags1;
     uint8    m_nFlags2;
 
@@ -35,6 +47,7 @@ public:
     static void InjectHooks();
 
     void ReleasePickedUpObject();
+    ModelIndex GetModelForType() const;
     void CreateHookObjectForRope();
     int8 UpdateWeightInRope(float a2, float a3, float a4, int32 a5, float* a6);
     void Remove();
