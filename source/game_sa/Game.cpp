@@ -170,7 +170,7 @@ void CGame::FinalShutdown() {
     CTxdStore::Shutdown();
     CPedStats::Shutdown();
     TheText.Unload(false);
-    CdStreamShutdown();
+    //CdStreamShutdown();
 }
 
 // dummy function
@@ -386,7 +386,7 @@ void CGame::InitialiseOnceBeforeRW() {
     CMemoryMgr::Init();
     CLocalisation::Initialise();
     CFileMgr::Initialise();
-    CdStreamInit(5);
+    //CdStreamInit(5);
     CPad::Initialise();
 }
 

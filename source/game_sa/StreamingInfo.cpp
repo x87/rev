@@ -14,7 +14,7 @@ void CStreamingInfo::InjectHooks() {
 
 // 0x407460
 void CStreamingInfo::Init() {
-    m_nLoadState = LOADSTATE_NOT_LOADED;
+    m_nLoadState = eStreamingLoadState::NOT_LOADED;
     m_nNextIndex = -1;
     m_nPrevIndex = -1;
     m_nNextIndexOnCd = -1;
@@ -36,7 +36,7 @@ void CStreamingInfo::AddToList(CStreamingInfo* listStart) {
 
 // 0x407570
 uint32 CStreamingInfo::GetCdPosn() {
-    return m_nCdPosn + CStreaming::ms_files[m_nImgId].m_StreamHandle;
+    return m_nCdPosn;
 }
 
 // 0x4075E0

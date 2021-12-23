@@ -190,6 +190,8 @@ void CBaseModelInfo::RemoveRef()
 
 void CBaseModelInfo::SetColModel(CColModel *colModel, bool bIsLodModel)
 {
+    assert(colModel);
+
     m_pColModel = colModel;
     if (!bIsLodModel) {
         bIsLod = false;

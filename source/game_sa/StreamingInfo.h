@@ -16,29 +16,58 @@ enum eStreamingFlags {
     STREAMING_DONTREMOVE_IN_LOADSCENE = STREAMING_LOADING_SCENE | STREAMING_PRIORITY_REQUEST | STREAMING_KEEP_IN_MEMORY | STREAMING_MISSION_REQUIRED | STREAMING_GAME_REQUIRED,
 };
 
-enum eStreamingLoadState {
-    // Model isn't loaded
-    LOADSTATE_NOT_LOADED = 0,
+enum class eStreamingLoadState {
+    // Model not yet loaded
+    NOT_LOADED,
 
-    // Model is loaded
-    LOADSTATE_LOADED = 1,
+    // Model loaded currently
+    LOADED,
 
-    // Model in request list, but not yet in loading channel (TODO: Verify this)
-    LOADSTATE_REQUESTED = 2,
+    // In case of big models: first half has been loaded, 2nd half is being read
+    // Currently unused
+    FINISHING,
 
-    // Model is being read
-    LOADSTATE_READING = 3,
+    // Both `REQUESTED` and `READING` can be cancelled by setting the state to `NOT_LOADED`
 
-    // If the model is a `big` one this state is used to indicate
-    // that the model's first half has been loaded and is yet to be
-    // finished by loading the second half.
-    // When it has been loaded the state is set to `LOADED`
-    LOADSTATE_FINISHING = 4 
+    // In request list
+    REQUESTED,
+
+    // Currently being read 
+    READING,
+
+    // Reading finished, waiting to be loaded by main thread
+    READING_FINISHED,
 };
 
-constexpr auto STREAMING_SECTOR_SIZE = 2048u;
+//constexpr auto STREAMING_SECTOR_SIZE = 2048u;
 
 class CStreamingInfo {
+public:
+    //class Iterator {
+    //public:
+    //    using iterator_category = std::bidirectional_iterator_tag;
+    //    using difference_type   = std::ptrdiff_t;
+    //    using value_type        = CStreamingInfo;
+    //    using pointer           = CStreamingInfo*;
+    //    using reference         = CStreamingInfo&;
+
+    //    Iterator(pointer ptr) :
+    //        m_item(ptr)
+    //    {}
+
+    //    reference operator*() const { return *m_ptr; }
+    //    pointer operator->() { return m_ptr; }
+    //    Iterator& operator++() {
+    //        m_ptr = 
+    //        return *this;
+    //    }
+    //    Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+    //    friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
+    //    friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
+    //private:
+    //    CStreamingInfo* m_ptr{};
+    //};
+
 public:
     int16 m_nNextIndex;     // ms_pArrayBase array index
     int16 m_nPrevIndex;     // ms_pArrayBase array index
@@ -57,7 +86,8 @@ public:
     uint8  m_nImgId;        // Index into CStreaming::ms_files
     uint32 m_nCdPosn;       // Position in directory (in sectors)
     uint32 m_nCdSize;       // Size of resource (in sectors); m_nCdSize * STREAMING_BLOCK_SIZE = actual size in bytes
-    uint32 m_nLoadState;    // See eStreamingLoadState
+
+    std::atomic<eStreamingLoadState> m_nLoadState;
 
     static CStreamingInfo*& ms_pArrayBase;
 
@@ -75,6 +105,8 @@ public:
     CStreamingInfo* GetPrev() { return m_nPrevIndex == -1 ? nullptr : &ms_pArrayBase[m_nPrevIndex]; }
     bool InList();
     void RemoveFromList();
+    auto GetNextOnCd() const noexcept { return (uint32_t)m_nNextIndexOnCd; }
+    auto GetImgId() const noexcept { return m_nImgId; }
 
     void SetFlags(uint32 flags) { m_nFlags |= flags; }
     void ClearFlags(uint32 flags) { m_nFlags &= ~flags; }
@@ -82,27 +114,32 @@ public:
     void ClearAllFlags() noexcept { m_nFlags = 0; } // Clears all flags
     bool AreAnyFlagsSetOutOf(uint32 flags) const noexcept { return GetFlags() & flags; } // Checks if any flags in `flags` are set
 
+    auto GetLoadState() const noexcept { return m_nLoadState.load(); }
+
     bool IsLoadedOrBeingRead() const noexcept {
-        switch (m_nLoadState) {
-        case eStreamingLoadState::LOADSTATE_LOADED:
-        case eStreamingLoadState::LOADSTATE_READING:
+        switch (GetLoadState()) {
+        case eStreamingLoadState::LOADED:
+        case eStreamingLoadState::READING:
             return true;
         default:
             return false;
         }
     }
-    bool IsLoaded() const { return m_nLoadState == eStreamingLoadState::LOADSTATE_LOADED; }
-    bool IsRequested() const { return m_nLoadState == eStreamingLoadState::LOADSTATE_REQUESTED; }
-    bool IsBeingRead() const { return m_nLoadState == eStreamingLoadState::LOADSTATE_READING; }
-    bool IsLoadingFinishing() const { return m_nLoadState == eStreamingLoadState::LOADSTATE_FINISHING; }
 
-    bool DontRemoveInLoadScene() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_DONTREMOVE_IN_LOADSCENE; }
-    bool IsGameRequired() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_GAME_REQUIRED; }
-    bool IsMissionRequired() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_MISSION_REQUIRED; }
-    bool DoKeepInMemory() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_KEEP_IN_MEMORY; }
-    bool IsPriorityRequest() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_PRIORITY_REQUEST; }
-    bool IsLoadingScene() const noexcept { return m_nFlags & eStreamingFlags::STREAMING_LOADING_SCENE; }
+    bool IsLoaded() const { return GetLoadState() == eStreamingLoadState::LOADED; }
+    bool IsRequested() const { return GetLoadState() == eStreamingLoadState::REQUESTED; }
+    bool IsBeingRead() const { return GetLoadState() == eStreamingLoadState::READING; }
+    bool IsLoadingFinishing() const { return GetLoadState() == eStreamingLoadState::FINISHING; }
+
+    void SetLoadState(eStreamingLoadState st) noexcept { m_nLoadState = st; }
+
+    bool DontRemoveInLoadScene() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_DONTREMOVE_IN_LOADSCENE; }
+    bool IsGameRequired() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_GAME_REQUIRED; }
+    bool IsMissionRequired() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_MISSION_REQUIRED; }
+    bool DoKeepInMemory() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_KEEP_IN_MEMORY; }
+    bool IsPriorityRequest() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_PRIORITY_REQUEST; }
+    bool IsLoadingScene() const noexcept { return GetFlags() & eStreamingFlags::STREAMING_LOADING_SCENE; }
     bool IsRequiredToBeKept() const noexcept { return IsGameRequired() || IsMissionRequired() || DoKeepInMemory(); } // GameRequired || MissionRequired || KeepInMemory
-    bool IsMissionOrGameRequired() const noexcept { return IsGameRequired() || IsGameRequired(); }
+    bool IsMissionOrGameRequired() const noexcept { return IsMissionRequired() || IsGameRequired(); } // TODO: FIX
 };
 VALIDATE_SIZE(CStreamingInfo, 0x14);

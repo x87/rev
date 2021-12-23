@@ -300,6 +300,7 @@ void ProcessImgui() {
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0) && selectedId != -1)
             CCheat::VehicleCheat(static_cast<eModelID>(selectedId));
         ImGui::NextColumn();
+
         ImGui::PopID();
     }
     ImGui::EndColumns();

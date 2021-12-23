@@ -29,7 +29,7 @@ enum class eChannelState
     // First, the variable `ms_bLoadingBigModel` is set to `true` in `RequestModelStream`.
     // When the first half is finished loading, and `ProcessLoadingChannel` is called
     // `ConvertBufferToObject` will be called by it, which will set the model's load state to
-    // `LOADSTATE_FINISHING`. When the latter function returns the former checks if
+    // `FINISHING`. When the latter function returns the former checks if
     // the model's loadstate is `FINISHING`, if it is the channel's state is set to
     // `STARTED` to indicate a large model's loading has started and is yet to be finished.
     // Loading a large model is finished when `ProcessLoadingChannel`.
@@ -143,27 +143,27 @@ struct tRwStreamInitializeData {
 
 VALIDATE_SIZE(tRwStreamInitializeData, 0x8);
 
-struct tStreamingFileDesc {
-    tStreamingFileDesc() = default;
+//struct tStreamingFileDesc {
+//    tStreamingFileDesc() = default;
+//
+//    tStreamingFileDesc(const char* name, bool bNotPlayerImg) :
+//        m_bNotPlayerImg(bNotPlayerImg),
+//        m_StreamHandle(CdStreamOpen(name))
+//    {
+//        strncpy_s(m_szName, name, std::size(m_szName));
+//    }
+//
+//    bool IsInUse() const noexcept {
+//        return m_szName[0];
+//    }
+//
+//    char  m_szName[40]{}; // If this string is empty (eg.: first elem in array is NULL) the entry isnt in use
+//    bool  m_bNotPlayerImg{};
+//    char  __pad[3]{};
+//    int32 m_StreamHandle{-1};
+//};
 
-    tStreamingFileDesc(const char* name, bool bNotPlayerImg) :
-        m_bNotPlayerImg(bNotPlayerImg),
-        m_StreamHandle(CdStreamOpen(name))
-    {
-        strncpy_s(m_szName, name, std::size(m_szName));
-    }
-
-    bool IsInUse() const noexcept {
-        return m_szName[0];
-    }
-
-    char  m_szName[40]{}; // If this string is empty (eg.: first elem in array is NULL) the entry isnt in use
-    bool  m_bNotPlayerImg{};
-    char  __pad[3]{};
-    int32 m_StreamHandle{-1};
-};
-
-VALIDATE_SIZE(tStreamingFileDesc, 0x30);
+//VALIDATE_SIZE(tStreamingFileDesc, 0x30);
 
 struct tStreamingChannel {
     int32               modelIds[16];
@@ -180,12 +180,12 @@ VALIDATE_SIZE(tStreamingChannel, 0x98);
 
 class CStreaming {
 public:
-    static const int32 TOTAL_SPECIAL_MODELS = 10;
-    static const int32 TOTAL_CLOTHES_MODELS = 10;
-    static const int32 TOTAL_CUTSCENE_MODELS = 20;
-    static const int32 SPECIAL_MODELS_RESOURCE_ID = 290;
-    static const int32 CLOTHES_MODELS_RESOURCE_ID = 384;
-    static const int32 CUTSCENE_MODELS_RESOURCE_ID = 300;
+    static constexpr int32 TOTAL_SPECIAL_MODELS = 10;
+    static constexpr int32 TOTAL_CLOTHES_MODELS = 10;
+    static constexpr int32 TOTAL_CUTSCENE_MODELS = 20;
+    static constexpr int32 SPECIAL_MODELS_RESOURCE_ID = 290;
+    static constexpr int32 CLOTHES_MODELS_RESOURCE_ID = 384;
+    static constexpr int32 CUTSCENE_MODELS_RESOURCE_ID = 300;
     static uint32& ms_memoryAvailable;
     static int32& desiredNumVehiclesLoaded;
     static bool& ms_bLoadVehiclesInLoadScene;
@@ -199,7 +199,7 @@ public:
     static int32(&ms_aDefaultFireEngineModel)[4];
     static int32(&ms_aDefaultFiremanModel)[4];
     static CDirectory*& ms_pExtraObjectsDir;
-    static tStreamingFileDesc (&ms_files)[TOTAL_IMG_ARCHIVES];
+    /*static tStreamingFileDesc (&ms_files)[TOTAL_IMG_ARCHIVES];*/
     static bool& ms_bLoadingBigModel;
     // There are only two channels within CStreaming::ms_channel
     static tStreamingChannel(&ms_channel)[2];
@@ -240,6 +240,12 @@ public:
     static CLink<CEntity*>*& ms_renderEntityLink;
     static bool& m_bLoadingAllRequestedModels;
     static bool& m_bModelStreamNotLoaded;
+
+private:
+    
+
+
+public:
 
 public:
     static void InjectHooks();
