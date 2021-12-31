@@ -10,14 +10,15 @@
 
 class CTrainNode {
 public:
-    int16  x;
-    int16  y;
-    int16  z;
-    uint16 m_nDistanceFromStart;
-    bool   m_nSurfaceLighting;
-    bool   m_bSurfLightingFound;
+    CompressedVector m_pos;
+    uint16           m_nDistanceFromStart{};
+    tColLighting     m_nSurfaceLighting{};
+    bool             m_bSurfLightingFound{};
 
     CTrainNode();
+    CTrainNode* Constructor();
+
+    static void InjectHooks();
 
     void    SetX(float X);
     void    SetY(float Y);
@@ -28,7 +29,7 @@ public:
     CVector GetPosn();
     void    SetDistanceFromStart(float dist);
     float   GetDistanceFromStart();
-    uint8   GetLightingFromCollision();
+    tColLighting GetLightingFromCollision();
 };
 
 VALIDATE_SIZE(CTrainNode, 0xA);
