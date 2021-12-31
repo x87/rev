@@ -206,4 +206,4 @@ CSector* GetSector(int32 x, int32 y);
 CRepeatSector* GetRepeatSector(int32 x, int32 y);
 void SetNextScanCode();
 
-double ScaleLighting(uint8 lighting, float fScale);
+double ScaleLighting(tColLighting lighting, float fScale);

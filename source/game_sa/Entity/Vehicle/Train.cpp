@@ -662,11 +662,7 @@ void CTrain::ProcessControl_Reversed()
         }
 
         float fTheDistance = (m_fCurrentRailDistance - fCurrentNodeTrackLength) / fTrackNodeDifference;
-        CVector vecPosition1;
-        vecPosition1.x = pTheTrainNode->x * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->x * 0.125f * fTheDistance;
-        vecPosition1.y = pTheTrainNode->y * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->y * 0.125f * fTheDistance;
-        vecPosition1.z = pTheTrainNode->z * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->z * 0.125f * fTheDistance;
-
+        CVector vecPosition1 = pTheTrainNode->GetPosn() * ((1.0f - fTheDistance) + fTheDistance);
 
         CColModel* pVehicleColModel = CModelInfo::ms_modelInfoPtrs[m_nModelIndex]->GetColModel();
         CBoundingBox* pBoundingBox = &pVehicleColModel->GetBoundingBox();
@@ -719,10 +715,7 @@ void CTrain::ProcessControl_Reversed()
         }
 
         fTheDistance = (fTotalCurrentRailDistance - fCurrentNodeTrackLength) / fTrackNodeDifference;
-        CVector vecPosition2;
-        vecPosition2.x = pTheTrainNode->x * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->x * 0.125f * fTheDistance;
-        vecPosition2.y = pTheTrainNode->y * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->y * 0.125f * fTheDistance;
-        vecPosition2.z = pTheTrainNode->z * 0.125f * (1.0f - fTheDistance) + pNextTrainNode->z * 0.125f * fTheDistance;
+        CVector vecPosition2 = pTheTrainNode->GetPosn() * ((1.0f - fTheDistance) + fTheDistance);
 
         {
             CVector& vecVehiclePosition = GetPosition();
@@ -744,11 +737,8 @@ void CTrain::ProcessControl_Reversed()
 
         CrossProduct(&GetUp(), &GetRight(), &GetForward());
 
-        uint8 trainNodeLighting = pTheTrainNode->GetLightingFromCollision();;
-        uint8 trainNextNodeLighting = pNextTrainNode->GetLightingFromCollision();
-
-        float fTrainNodeLighting = static_cast<float>(ScaleLighting(trainNodeLighting, 0.5f));
-        float fTrainNextNodeLighting = static_cast<float>(ScaleLighting(trainNextNodeLighting, 0.5f));
+        float fTrainNodeLighting = static_cast<float>(ScaleLighting(pTheTrainNode->GetLightingFromCollision(), 0.5f));
+        float fTrainNextNodeLighting = static_cast<float>(ScaleLighting(pNextTrainNode->GetLightingFromCollision(), 0.5f));
 
         fTrainNodeLighting += (fTrainNextNodeLighting - fTrainNodeLighting) * fTheDistance;
         m_fContactSurfaceBrightness = fTrainNodeLighting;

@@ -601,7 +601,7 @@ void SetNextScanCode() {
     plugin::Call<0x4072E0>();
 }
 
-double ScaleLighting(uint8 lighting, float fScale)
+double ScaleLighting(tColLighting lighting, float fScale)
 {
-    return plugin::CallAndReturn<double, 0x59F0C0, uint8, float> (lighting, fScale);
+    return plugin::CallAndReturn<double, 0x59F0C0, tColLighting, float> (lighting, fScale);
 }
