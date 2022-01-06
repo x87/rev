@@ -76,6 +76,11 @@ public:
     bool InList();
     void RemoveFromList();
 
+    HANDLE GetFileHandle() const;
+    uint32 GetOffset() const;
+
+    CBaseModelInfo* GetModelInfo() const;
+
     void SetFlags(uint32 flags) { m_nFlags |= flags; }
     void ClearFlags(uint32 flags) { m_nFlags &= ~flags; }
     auto GetFlags() const noexcept { return m_nFlags; }

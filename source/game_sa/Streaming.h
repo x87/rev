@@ -228,6 +228,7 @@ public:
     static uint32& ms_streamingBufferSize;
     static uint8** ms_pStreamingBuffer;
     static uint32& ms_memoryUsed;
+    static inline uint32 ms_numModelsLoaded = 0;
     static int32& ms_numModelsRequested;
     static CStreamingInfo(&ms_aInfoForModel)[26316];
     static bool& ms_disableStreaming;
@@ -242,7 +243,10 @@ public:
     static bool& m_bModelStreamNotLoaded;
 
 public:
+    static size_t GetNumRequests();
+    static size_t GetRequestsMemUsage();
     static void InjectHooks();
+    static uint32 GetModelFromInfo(CStreamingInfo const* info);
 
     static CStreamingInfo& GetInfo(uint32 modelId);
     static bool IsRequestListEmpty();
@@ -315,7 +319,7 @@ public:
     static void PossiblyStreamCarOutAfterCreation(int32 modelId);
     static void ProcessEntitiesInSectorList(CPtrList& list, float posX, float posY, float minX, float minY, float maxX, float maxY, float radius, int32 streamingflags);
     static void ProcessEntitiesInSectorList(CPtrList& list, int32 streamingFlags);
-    static bool ProcessLoadingChannel(int32 channelIndex);
+    static bool ProcessLoadingChannel();
     static void PurgeRequestList();
     static void ReInit();
     static void ReadIniFile();

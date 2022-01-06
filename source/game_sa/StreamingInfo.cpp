@@ -66,3 +66,17 @@ void CStreamingInfo::RemoveFromList() {
     m_nNextIndex = -1;
     m_nPrevIndex = -1;
 }
+
+// Return offset in image file in sectors
+uint32 CStreamingInfo::GetOffset() const {
+    return m_nCdPosn;
+}
+
+// Img file handle
+HANDLE CStreamingInfo::GetFileHandle() const {
+    return gStreamFileHandles[CStreaming::ms_files[m_nImgId].m_StreamHandle >> 24];
+}
+
+CBaseModelInfo* CStreamingInfo::GetModelInfo() const {
+    return CModelInfo::GetModelInfo(CStreaming::GetModelFromInfo(this));
+}
