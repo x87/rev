@@ -83,6 +83,8 @@
 #include "OnscreenCounterEntry.h"
 #include "FallingGlassPane.h"
 #include "PostEffects.h"
+#include "Rope.h"
+#include "Ropes.h"
 
 // Tasks
 #include "TaskSimpleAbseil.h"
@@ -190,7 +192,6 @@
 #include "TaskComplexAvoidOtherPedWhileWandering.h"
 #include "TaskComplexArrestPed.h"
 
-
 void InjectHooksMain() {
     ReversibleHooks::OnInjectionBegin();
 
@@ -198,6 +199,8 @@ void InjectHooksMain() {
     CPad::InjectHooks();
     CFileMgr::InjectHooks();
 
+    CRope::InjectHooks();
+    CRopes::InjectHooks();
     CWeaponInfo::InjectHooks();
     CCurrentVehicle::InjectHooks();
     CPlaceName::InjectHooks();
