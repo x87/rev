@@ -284,7 +284,6 @@ void CGlass::GeneratePanesForWindow(uint32 type, CVector point, CVector fwd, CVe
 
     const float totalSizeY = fwd.Magnitude(), totalSizeX = right.Magnitude();
 
-
     // Calculate no. of sections, and section size
     const auto CalculateCountOfSectionsAndSizeAxis = [&](auto axisSize) {
         const auto count = numSectionsMax1 ? 1 : std::min(numSections * (uint32)(axisSize + 0.75f/*make it round upwards*/), 3u);
@@ -307,7 +306,7 @@ void CGlass::GeneratePanesForWindow(uint32 type, CVector point, CVector fwd, CVe
     for (auto posY = 0u; posY < countY; posY++) {
         for (auto posX = 0u; posX < countX; posX++) {
             for (auto piece = 0u; piece < 5u; piece++) {
-                if (auto pane = FindFreePane()) {
+                if (auto* pane = FindFreePane()) {
                     pane->nPieceIndex = piece;
 
                     // Calculate matrix
@@ -316,8 +315,11 @@ void CGlass::GeneratePanesForWindow(uint32 type, CVector point, CVector fwd, CVe
                     mat.GetUp() = Normalized(fwd) * sizeY;
                     mat.GetForward() = Normalized(CrossProduct(mat.GetRight(), mat.GetUp()));
 
-                    const auto paneCenterPos = PanePolyCenterPositions[piece] * CVector2D{ sizeX, sizeY } + CVector2D{(float)posX, (float)posY};
-                    mat.GetPosition() = point + Normalized(fwd) * paneCenterPos.y + Normalized(right) * paneCenterPos.x;
+                    // Matrix's position is the center of the glass pane
+                    const auto paneCenterPos = (PanePolyCenterPositions[piece] + CVector2D{ (float)posX, (float)posY } )* CVector2D{ sizeX, sizeY };
+                    mat.GetPosition() = point
+                        + Normalized(fwd) * paneCenterPos.y 
+                        + Normalized(right) * paneCenterPos.x;
 
                     {
                         constexpr auto RandomFactor = [] {return (float)((rand() % 128) - 64) * 0.0015f; };
@@ -339,7 +341,7 @@ void CGlass::GeneratePanesForWindow(uint32 type, CVector point, CVector fwd, CVe
                         break;
                     }
                     case 2:
-                    default: {
+                    case 0:{
                         pane->createdTime = CTimer::GetTimeInMS();
                         break;
                     }
@@ -509,7 +511,7 @@ void CGlass::AskForObjectToBeRenderedInGlass(CEntity* entity) {
 
 // 0x71ACA0
 CFallingGlassPane* CGlass::FindFreePane() {
-    const auto it = rng::find_if(aGlassPanes, [](auto&& v) {return v.existFlag; });
+    const auto it = rng::find_if(aGlassPanes, [](auto&& v) { return !v.existFlag; });
     return it != std::end(aGlassPanes) ? &*it : nullptr;
 }
 
@@ -604,6 +606,6 @@ void CGlass::BreakGlassPhysically(CVector point, float radius) {
 }
 
 // 0x71C1A0
-void CGlass::WindowRespondsToExplosion(CEntity* entity, const CVector& pos) {
+void CGlass::WindowRespondsToExplosion(CEntity* entity, CVector pos) {
     plugin::Call<0x71C1A0, CEntity*, CVector>(entity, pos);
 }
