@@ -3,6 +3,7 @@
 #include "StdInc.h"
 
 #include "AEPedSpeechAudioEntity.h"
+#include <game_sa/Audio/AEAudioUtility.h>
 
 int16& CAEPedSpeechAudioEntity::s_nCJWellDressed = *(int16*)0xB613D0;
 int16& CAEPedSpeechAudioEntity::s_nCJFat = *(int16*)0xB613D4;
@@ -138,8 +139,34 @@ int16 CAEPedSpeechAudioEntity::GetNextMoodToUse(int16 currentCJMood) {
 }
 
 // 0x4E4760
-int32 CAEPedSpeechAudioEntity::GetVoiceForMood(int16 a1) {
-    return plugin::CallAndReturn<int32, 0x4E4760, int16>(a1);
+int32 CAEPedSpeechAudioEntity::GetVoiceForMood(int16 currentCJMood) {
+    const auto GetModifier = [=] {
+        switch (currentCJMood) {
+        case 0:
+            return 0;
+        case 1:
+            return 2;
+        case 2:
+            return 4;
+        case 3:
+            return 6;
+        case 4:
+            return 8;
+        /*case 5: // Maybe? Unsure.
+            return 10;
+        */
+        case 6:
+            return 12;
+        case 7:
+            return 14;
+        case 8:
+            return 16;
+        case 9:
+            return 18;
+        }
+        return 10;
+    };
+    return CAEAudioUtility::GetRandomNumberInRange(0, 1) + GetModifier();
 }
 
 // 0x4E4950
