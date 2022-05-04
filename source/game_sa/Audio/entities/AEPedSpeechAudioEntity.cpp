@@ -35,7 +35,7 @@ void CAEPedSpeechAudioEntity::InjectHooks() {
     RH_ScopedInstall(IsGlobalContextUberImportant, 0x4E46F0);
     RH_ScopedInstall(GetNextMoodToUse, 0x4E4700);
     // RH_ScopedInstall(GetVoiceForMood, 0x4E4760);
-    // RH_ScopedInstall(CanWePlayScriptedSpeech, 0x4E4950);
+    RH_ScopedInstall(CanWePlayScriptedSpeech, 0x4E4950);
     // RH_ScopedInstall(GetSpeechContextVolumeOffset, 0x4E4AE0);
     // RH_ScopedInstall(RequestPedConversation, 0x4E50E0);
     // RH_ScopedInstall(ReleasePedConversation, 0x4E52A0);
@@ -171,7 +171,14 @@ int32 CAEPedSpeechAudioEntity::GetVoiceForMood(int16 currentCJMood) {
 
 // 0x4E4950
 int16 CAEPedSpeechAudioEntity::CanWePlayScriptedSpeech() {
-    return plugin::CallAndReturn<int16, 0x4E4950>();
+    for (int16 i = 0; i < (int16)s_PedSpeechSlots.size(); i++) {
+        const auto slot = (s_NextSpeechSlot + i) % ((int16)s_PedSpeechSlots.size() - 1);
+        if (s_PedSpeechSlots[slot].m_nState == 0) {
+            s_NextSpeechSlot = slot;
+            return slot;
+        }
+    }
+    return -1;
 }
 
 // 0x4E4AE0
