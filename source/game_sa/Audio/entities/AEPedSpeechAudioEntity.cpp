@@ -31,7 +31,7 @@ void CAEPedSpeechAudioEntity::InjectHooks() {
 
     RH_ScopedInstall(Constructor, 0x4E4F10);
     // RH_ScopedInstall(IsGlobalContextImportantForInterupting, 0x4E4600);
-    // RH_ScopedInstall(IsGlobalContextUberImportant, 0x4E46F0);
+    RH_ScopedInstall(IsGlobalContextUberImportant, 0x4E46F0);
     // RH_ScopedInstall(GetNextMoodToUse, 0x4E4700);
     // RH_ScopedInstall(GetVoiceForMood, 0x4E4760);
     // RH_ScopedInstall(CanWePlayScriptedSpeech, 0x4E4950);
@@ -110,8 +110,16 @@ int8 CAEPedSpeechAudioEntity::IsGlobalContextImportantForInterupting(int16 a1) {
 }
 
 // 0x4E46F0
-int8 CAEPedSpeechAudioEntity::IsGlobalContextUberImportant(int16 a1) {
-    return plugin::CallAndReturn<int8, 0x4E46F0, int16>(a1);
+int8 CAEPedSpeechAudioEntity::IsGlobalContextUberImportant(int16 phraseId) {
+    switch (phraseId) {
+    case 13:
+    case 15:
+    case 125:
+    case 126:
+    case 127:
+        return true;
+    }
+    return false;
 }
 
 // 0x4E4700
