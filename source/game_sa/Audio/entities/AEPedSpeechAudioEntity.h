@@ -6,6 +6,8 @@
 */
 #pragma once
 
+#include <array>
+
 #include "AEAudioEntity.h"
 #include "AESound.h"
 
@@ -19,6 +21,24 @@ enum eAudioPedType {
 };
 
 class CAEPedSpeechAudioEntity : public CAEAudioEntity {
+public:
+    struct Slot
+    {
+        uint16 m_nState;
+        uint16 _02;
+        CAEPedSpeechAudioEntity* m_pedSpeechAE;
+        uint32 _08;
+        uint16 m_nSoundId;
+        uint16 m_nBankId;
+        uint32 m_nTime;
+        uint16 m_nPhraseId;
+        uint16 m_nVoiceType;
+        uint8 _18;
+        uint8 _19;
+        uint8 _1A;
+        uint8 _1B;
+    };
+
 public:
     char      field_7C[20]{};
     bool      f90{};
@@ -67,7 +87,7 @@ public:
 
     static int16& s_NextSpeechSlot;
     static int16& s_PhraseMemory;
-    // static CAEPedSpeechAudioEntity::Slot (&s_PedSpeechSlots)[6];
+    inline static std::array<Slot, 6> s_PedSpeechSlots = *(std::array<CAEPedSpeechAudioEntity::Slot, 6>*)0xB61C38;
 
 public:
     static void InjectHooks();

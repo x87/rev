@@ -24,14 +24,14 @@ CPed*& CAEPedSpeechAudioEntity::s_pConversationPed2 = *(CPed**)0xB6140C;
 CPed*& CAEPedSpeechAudioEntity::s_pConversationPed1 = *(CPed**)0xB61410;
 int16& CAEPedSpeechAudioEntity::s_NextSpeechSlot = *(int16*)0xB61414;
 int16& CAEPedSpeechAudioEntity::s_PhraseMemory = *(int16*)0xB61418;
-// CAEPedSpeechAudioEntity::Slot (&CAEPedSpeechAudioEntity::s_PedSpeechSlots)[6] = *(CAEPedSpeechAudioEntity::Slot(*)[6])0xB61C38;
+
 
 void CAEPedSpeechAudioEntity::InjectHooks() {
     RH_ScopedClass(CAEPedSpeechAudioEntity);
     RH_ScopedCategory("Audio/Entities");
 
     RH_ScopedInstall(Constructor, 0x4E4F10);
-    // RH_ScopedInstall(IsGlobalContextImportantForInterupting, 0x4E4600);
+    RH_ScopedInstall(IsGlobalContextImportantForInterupting, 0x4E4600);
     RH_ScopedInstall(IsGlobalContextUberImportant, 0x4E46F0);
     RH_ScopedInstall(GetNextMoodToUse, 0x4E4700);
     // RH_ScopedInstall(GetVoiceForMood, 0x4E4760);
@@ -106,12 +106,7 @@ CAEPedSpeechAudioEntity::CAEPedSpeechAudioEntity() : CAEAudioEntity() {
 }
 
 // 0x4E4600
-int8 CAEPedSpeechAudioEntity::IsGlobalContextImportantForInterupting(int16 a1) {
-    return plugin::CallAndReturn<int8, 0x4E4600, int16>(a1);
-}
-
-// 0x4E46F0
-int8 CAEPedSpeechAudioEntity::IsGlobalContextUberImportant(int16 phraseId) {
+int8 CAEPedSpeechAudioEntity::IsGlobalContextImportantForInterupting(int16 phraseId) {
     switch (phraseId) {
     case 13:
     case 15:
@@ -120,6 +115,11 @@ int8 CAEPedSpeechAudioEntity::IsGlobalContextUberImportant(int16 phraseId) {
     case 127:
         return true;
     }
+    return false;
+}
+
+// 0x4E46F0
+int8 CAEPedSpeechAudioEntity::IsGlobalContextUberImportant(int16 phraseId) {
     return false;
 }
 
