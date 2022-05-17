@@ -182,8 +182,16 @@ int16 CAEPedSpeechAudioEntity::CanWePlayScriptedSpeech() {
 }
 
 // 0x4E4AE0
-float CAEPedSpeechAudioEntity::GetSpeechContextVolumeOffset(int16 a1) {
-    return plugin::CallAndReturn<float, 0x4E4AE0, int16>(a1);
+float CAEPedSpeechAudioEntity::GetSpeechContextVolumeOffset(int16 phraseId) {
+    switch (phraseId) {
+    case 337:
+        return -6.f;
+    case 338:
+        return -12.f;
+    case 354: {
+        return (std::clamp((CStats::GetStatValue(STAT_FAT) - CStats::GetStatValue(STAT_MUSCLE) / 1000.f, -1.f, 1.f) + 1.f) / 2/f * ()
+    }
+    }
 }
 
 // 0x4E50E0
