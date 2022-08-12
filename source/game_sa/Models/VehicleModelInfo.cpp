@@ -133,8 +133,8 @@ CVehicleModelInfo::CVehicleModelInfo() : CClumpModelInfo()
     m_nNumColorVariations = 0;
     m_nFlags = 0;
     m_nAnimBlockIndex = -1;
-    memset(m_anUpgrades, 0xFF, sizeof(m_anUpgrades));
-    std::ranges::fill(m_anRemapTxds, -1);
+    rng::fill(m_anUpgrades, -1);
+    rng::fill(m_anRemapTxds, -1);
 }
 
 ModelInfoType CVehicleModelInfo::GetModelType()
@@ -1491,7 +1491,7 @@ void CVehicleModelInfo::LoadVehicleUpgrades()
             int32 iModelId = -1;
             auto mi = CModelInfo::GetModelInfo(pToken, &iModelId)->AsVehicleModelInfoPtr();
             auto nextToken = strtok(nullptr, " \t,");
-            auto upgrade = mi->m_anUpgrades;
+            auto upgrade = mi->m_anUpgrades.begin();
             while (nextToken) {
                 auto ami = static_cast<CAtomicModelInfo*>(CModelInfo::GetModelInfo(nextToken, &iModelId));
                 ami->SetupVehicleUpgradeFlags(nextToken);
@@ -1586,7 +1586,6 @@ CVehicleModelInfo::CVehicleStructure::CVehicleStructure() : m_aUpgrades()
     for (auto& upgrade : m_aUpgrades)
         upgrade.m_nParentComponentId = -1;
 
-    memset(m_apExtras, 0, sizeof(m_apExtras));
     m_nNumExtras = 0;
     m_nMaskComponentsDamagable = 0;
 }

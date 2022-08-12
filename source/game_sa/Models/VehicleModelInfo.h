@@ -162,9 +162,9 @@ public:
         static constexpr int32 NUM_EXTRAS = 6;
 
     public:
-        CVector         m_avDummyPos[NUM_DUMMIES];
-        UpgradePosnDesc m_aUpgrades[NUM_UPGRADES];
-        RpAtomic*       m_apExtras[NUM_EXTRAS];
+        std::array<CVector, NUM_DUMMIES> m_avDummyPos;
+        std::array<UpgradePosnDesc, NUM_UPGRADES> m_aUpgrades;
+        std::array<RpAtomic*, NUM_EXTRAS> m_apExtras{0};
         uint8           m_nNumExtras;
         uint32          m_nMaskComponentsDamagable;
 
@@ -182,20 +182,20 @@ public:
 
     } * m_pVehicleStruct;
 
-    char        field_60[464];
-    RpMaterial* m_apDirtMaterials[32];
-    uint8       m_anPrimaryColors[8];
-    uint8       m_anSecondaryColors[8];
-    uint8       m_anTertiaryColors[8];
-    uint8       m_anQuaternaryColors[8];
+    std::array<char, 464> field_60;
+    std::array<RpMaterial*, 32> m_apDirtMaterials;
+    std::array<uint8, 8> m_anPrimaryColors;
+    std::array<uint8, 8> m_anSecondaryColors;
+    std::array<uint8, 8> m_anTertiaryColors;
+    std::array<uint8, 8> m_anQuaternaryColors;
     uint8       m_nNumColorVariations;
     uint8       m_nLastColorVariation;
     uint8       m_nCurrentPrimaryColor;
     uint8       m_nCurrentSecondaryColor;
     uint8       m_nCurrentTertiaryColor;
     uint8       m_nCurrentQuaternaryColor;
-    int16       m_anUpgrades[18];
-    int16       m_anRemapTxds[4];
+    std::array<int16, 18> m_anUpgrades;
+    std::array<int16, 4> m_anRemapTxds;
 
     union {
         CAnimBlock* m_pAnimBlock;
@@ -205,8 +205,8 @@ public:
 
     static class CLinkedUpgradeList {
     public:
-        int16 m_anUpgrade1[30];
-        int16 m_anUpgrade2[30];
+        std::array<int16, 30> m_anUpgrade1;
+        std::array<int16, 30> m_anUpgrade2;
         uint32 m_nLinksCount;
 
     public:
@@ -217,7 +217,7 @@ public:
     } & ms_linkedUpgrades;
 
     // vehicle components description tables
-    // static RwObjectNameIdAssocation ms_vehicleDescs[12];
+    // static std::array<RwObjectNameIdAssocation, 12> ms_vehicleDescs;
     static constexpr int32 NUM_VEHICLE_MODEL_DESCS = 12;
     static RwObjectNameIdAssocation* (&ms_vehicleDescs)[NUM_VEHICLE_MODEL_DESCS]; // use eVehicleType to access
 
@@ -229,12 +229,12 @@ public:
     static RwTexture*(&ms_pLightsOnTexture);
 
     // color of currently rendered car
-    // static uint8 ms_currentCol[4];
+    // static std::array<uint8, 4> ms_currentCol;
     static constexpr int32 NUM_CURRENT_COLORS = 4;
     static uint8 (&ms_currentCol)[NUM_CURRENT_COLORS];
 
     // number of wheel upgrades available
-    // static int16 ms_numWheelUpgrades[4];
+    // static std::array<int16, 4> ms_numWheelUpgrades;
     static constexpr int32 NUM_WHEELS = 4;
     static int16 (&ms_numWheelUpgrades)[NUM_WHEELS];
 
@@ -250,13 +250,13 @@ public:
     static uint8 (&ms_lightsOn)[NUM_LIGHTS];
 
     // extras ids for next-spawned car
-    // static char ms_compsUsed[2];
+    // static std::array<char, 2> ms_compsUsed;
     static constexpr int32 NUM_COMPS_USAGE = 2;
     static uint8 (&ms_compsUsed)[NUM_COMPS_USAGE];
     static uint8 (&ms_compsToUse)[NUM_COMPS_USAGE];
 
     // vehicle colours from carcols.dat
-    // static CRGBA ms_vehicleColourTable[128];
+    // static std::array<CRGBA, 128> ms_vehicleColourTable;
     static constexpr int32 NUM_VEHICLE_COLORS = 128;
     static CRGBA (&ms_vehicleColourTable)[NUM_VEHICLE_COLORS];
 
