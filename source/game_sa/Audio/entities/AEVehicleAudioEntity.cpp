@@ -1920,7 +1920,7 @@ void CAEVehicleAudioEntity::ProcessVehicleSkidding(cVehicleParams& params) {
         auto* bike = params.m_pVehicle->AsBike();
         fUnk = bike->m_fGasPedalAudio;
         bAreRearWheelsNotSkidding = bike->m_anWheelState[1] != WHEEL_STATE_SKIDDING;
-        wheelStates = bike->m_anWheelState;
+        wheelStates = bike->m_anWheelState.data(); // TODO: Refactor (Make the below sum loop a lambda and call it with this as an arg)
         // todo: aWheelTimers = bike->m_wheelCollisionState;
         break;
     }

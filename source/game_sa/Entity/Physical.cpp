@@ -280,9 +280,11 @@ void CPhysical::ProcessCollision()
                 bike->m_apWheelCollisionEntity[1] = nullptr;
                 bike->m_apWheelCollisionEntity[2] = nullptr;
                 bike->m_apWheelCollisionEntity[3] = nullptr;
-                wheelsColPoints = bike->m_aWheelColPoint;
-                pfWheelsSuspensionCompression = bike->m_fWheelsSuspensionCompression;
-                wheelsCollisionPositions = bike->m_avTouchPointsLocalSpace;
+
+                // TODO: Use std::array<> for these local variables
+                wheelsColPoints = bike->m_aWheelColPoint.data();
+                pfWheelsSuspensionCompression = bike->m_fWheelsSuspensionCompression.data();
+                wheelsCollisionPositions = bike->m_avTouchPointsLocalSpace.data();
             }
             else {
                 automobile->m_apWheelCollisionEntity[0] = nullptr;

@@ -27,7 +27,7 @@ enum eBikeNodes {
 
 class CBike : public CVehicle {
 public:
-    RwFrame* m_aBikeNodes[BIKE_NUM_NODES];
+    std::array<RwFrame*, BIKE_NUM_NODES> m_aBikeNodes;
     bool     m_bLeanMatrixCalculated;
     CMatrix  m_mLeanMatrix;
     union {
@@ -48,26 +48,26 @@ public:
     CVector            m_vecAvgSurfaceRight;  // sued
     tBikeHandlingData* m_pBikeHandlingData;
     CRideAnimData      m_rideAnimData;
-    uint8              m_anWheelDamageState[2];
+    std::array<uint8, 2> m_anWheelDamageState;
 
-    CColPoint     m_aWheelColPoint[4];
-    float         m_fWheelsSuspensionCompression[4];
-    float         m_fWheelsSuspensionCompressionPrev[4];
-    float         m_aWheelTimer[4];
+    std::array<CColPoint, 4> m_aWheelColPoint;
+    std::array<float, 4> m_fWheelsSuspensionCompression;
+    std::array<float, 4> m_fWheelsSuspensionCompressionPrev;
+    std::array<float, 4> m_aWheelTimer;
     float         field_740; // sued unused
-    int32         m_anWheelSurfaceType[2];
-    bool          m_abBloodState[2];
-    bool          m_aWheelSkidmarkUnk[2]; // sued
-    float         m_afWheelRotationX[2];
-    float         m_fWheelSpeed[2];
+    std::array<int32, 2> m_anWheelSurfaceType;
+    std::array<bool, 2> m_abBloodState;
+    std::array<bool, 2> m_aWheelSkidmarkUnk; // sued
+    std::array<float, 2> m_afWheelRotationX;
+    std::array<float, 2> m_fWheelSpeed;
 
     float         m_aWheelFrontPosition;     // sued m_aWheelPosition[2]
     float         m_aWheelRearPosition;
     float         m_aWheelBaseFrontPosition; // sued m_aWheelBasePosition[2]
     float         m_aWheelBaseRearPosition;
 
-    float         field_770[4]; // sued m_aSuspensionSpringLength[4]
-    float         field_780[4]; // sued m_aSuspensionLineLength[4]
+    std::array<float, 4> field_770; // sued m_aSuspensionSpringLength[4]
+    std::array<float, 4> field_780; // sued m_aSuspensionLineLength[4]
     float         m_fHeightAboveRoad;
     float         m_fTraction;
 
@@ -81,18 +81,18 @@ public:
     float         m_fBrakeDestabilization;
     bool          m_bPedLeftHandFixed;
     bool          m_bPedRightHandFixed;
-    char          field_7B6[2];
+    std::array<char, 2> field_7B6;
     cTransmission* field_7B8; // sued float m_fVelocityChangeForAudio
     float         m_fFireBlowUpTimer;
-    CEntity*      m_apWheelCollisionEntity[4];  // sued m_aGroundPhysical
-    CVector       m_avTouchPointsLocalSpace[4]; // sued m_aGroundOffset
+    std::array<CEntity*, 4> m_apWheelCollisionEntity;  // sued m_aGroundPhysical
+    std::array<CVector, 4> m_avTouchPointsLocalSpace; // sued m_aGroundOffset
     CEntity*      m_pDamager;
     uint8         m_nNumContactWheels;
     uint8         m_nNumWheelsOnGround;
     uint8         m_nDriveWheelsOnGround;     // sued
     uint8         m_nDriveWheelsOnGroundPrev; // sued
     float         m_fGasPedalAudio;           // sued
-    tWheelState   m_anWheelState[2];
+    std::array<tWheelState, 2> m_anWheelState;
 
 public:
     CBike(plugin::dummy_func_t) : CVehicle(plugin::dummy), m_mLeanMatrix(plugin::dummy) { /* todo: remove NOTSA */ }
