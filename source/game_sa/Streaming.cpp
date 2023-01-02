@@ -355,7 +355,7 @@ void CStreaming::ClearFlagForAll(uint32 streamingFlag) {
 // 0x40BAA0
 void CStreaming::ClearSlots(int32 totalSlots) {
     for (auto& modelId : std::span{ ms_pedsLoaded, (size_t)totalSlots }) {
-        if (modelId >= 0) {
+        if (modelId != MODEL_INVALID) {
             SetModelAndItsTxdDeletable(modelId);
             modelId = MODEL_INVALID;
             ms_numPedsLoaded--;
@@ -1372,7 +1372,7 @@ void CStreaming::LoadZoneVehicle(const CVector& point) {
     if (CPopCycle::m_pCurrZoneInfo) {
         CTheZones::GetZoneInfo(point, nullptr); // called but return value is ignored
         const auto modelId = CCarCtrl::ChooseCarModelToLoad(CPopCycle::PickARandomGroupOfOtherPeds());
-        if (modelId >= 0)
+        if (modelId != MODEL_INVALID)
             RequestModel(modelId, STREAMING_KEEP_IN_MEMORY);
     }
 
@@ -1537,7 +1537,7 @@ void CStreaming::RequestVehicleUpgrade(int32 modelId, int32 streamingFlags) {
 int32 CStreaming::FindMIPedSlotForInterior(int32 randFactor) {
     for (auto i = 0; i < TOTAL_LOADED_PEDS; i++) {
         const auto modelId = ms_pedsLoaded[(i + randFactor) % TOTAL_LOADED_PEDS];
-        if (modelId >= 0 && GetInfo(modelId).IsLoaded()) {
+        if (modelId != MODEL_INVALID && GetInfo(modelId).IsLoaded()) {
             return modelId;
         }
     }
@@ -2247,7 +2247,7 @@ void CStreaming::RemoveCarModel(int32 modelId) {
 void CStreaming::RemoveCurrentZonesModels() {
     { // same as ClearSlots(std::size(ms_pedsLoaded));
         for (auto& modelId : ms_pedsLoaded) {
-            if (modelId >= 0) {
+            if (modelId != MODEL_INVALID) {
                 SetModelAndItsTxdDeletable(modelId);
                 modelId = MODEL_INVALID;
             }
@@ -2305,22 +2305,15 @@ void CStreaming::RemoveEntity(CLink<CEntity*>* streamingLink) {
 void CStreaming::RemoveInappropriatePedModels() {
     if (CPopCycle::m_pCurrZoneInfo) {
         for (auto& modelId : ms_pedsLoaded) {
-            if (modelId >= 0 && !CPopCycle::IsPedAppropriateForCurrentZone(modelId)) {
+            if (modelId != MODEL_INVALID && !CPopCycle::IsPedAppropriateForCurrentZone(modelId)) {
                 SetModelAndItsTxdDeletable(modelId);
                 modelId = MODEL_INVALID;
                 ms_numPedsLoaded--;
             }
         }
-    }
-    else {
-        // same as ClearSlots(std::size(ms_pedsLoaded));
-        for (auto& modelId : ms_pedsLoaded) {
-            if (modelId >= 0) {
-                SetModelAndItsTxdDeletable(modelId);
-                modelId = MODEL_INVALID;
-            }
-        }
-        ms_numPedsLoaded = 0;
+    } else {
+        ClearSlots(std::size(ms_pedsLoaded));
+        assert(ms_numPedsLoaded == 0);
     }
 }
 
@@ -2438,7 +2431,7 @@ bool CStreaming::RemoveLoadedZoneModel() {
         return false;
 
     for (auto& modelId : ms_pedsLoaded) {
-        if (modelId >= 0 && CarIsCandidateForRemoval(modelId)) {
+        if (modelId != MODEL_INVALID && CarIsCandidateForRemoval(modelId)) {
             RemoveModel(modelId);
             return true;
         }
@@ -3285,7 +3278,7 @@ void CStreaming::StreamOneNewCar() {
         )
     ) {
         int32 boatModelId = CCarCtrl::ChooseCarModelToLoad(POPCYCLE_CARGROUP_BOATS);
-        if (boatModelId >= 0) {
+        if (boatmodelId != MODEL_INVALID) {
             RequestModel(boatModelId, STREAMING_KEEP_IN_MEMORY);
             CPopulation::LoadSpecificDriverModelsForCar(boatModelId);
             return;
@@ -3389,8 +3382,18 @@ void CStreaming::StreamPedsForInterior(int32 interiorType) {
 // 0x40BDA0
 void CStreaming::StreamPedsIntoRandomSlots(int32 modelArray[TOTAL_LOADED_PEDS]) {
     for (int32 i = 0; i < TOTAL_LOADED_PEDS; i++) {
-        if (modelArray[i] >= 0) {
-            // Load model into slot
+        switch (modelArray[i]) {
+        case MODEL_INVALID: // Nothing to do
+            break;
+        case UNLOAD_MODEL: { // Unload this model
+            if (ms_pedsLoaded[i] >= 0) {
+                SetModelAndItsTxdDeletable(ms_pedsLoaded[i]);
+                ms_pedsLoaded[i] = MODEL_INVALID;
+                ms_numPedsLoaded--;
+            }
+            break;
+        }
+        default: { // Load the given model into the slot
             if (ms_pedsLoaded[i] >= 0) {
                 // Unload model from slot
                 SetModelAndItsTxdDeletable(ms_pedsLoaded[i]);
@@ -3401,12 +3404,8 @@ void CStreaming::StreamPedsIntoRandomSlots(int32 modelArray[TOTAL_LOADED_PEDS]) 
             RequestModel(modelArray[i], STREAMING_KEEP_IN_MEMORY);
             ms_pedsLoaded[i] = (eModelID)modelArray[i];
             ms_numPedsLoaded++;
-        } else if (modelArray[i] == UNLOAD_MODEL) { // Unload model from slot
-            if (ms_pedsLoaded[i] >= 0) {
-                SetModelAndItsTxdDeletable(ms_pedsLoaded[i]);
-                ms_pedsLoaded[i] = MODEL_INVALID;
-                ms_numPedsLoaded--;
-            }
+            break;
+        }
         }
     }
 }
@@ -3553,36 +3552,43 @@ void CStreaming::StreamZoneModels(const CVector& unused) {
         if (timeBeforeNextLoad >= 0) {
             timeBeforeNextLoad--;
         } else {
-           const auto slot = std::ranges::find_if(ms_pedsLoaded,
-                [](auto model) { return model == MODEL_INVALID || CModelInfo::GetModelInfo(model)->m_nRefCount == 0; }
-            );
-           if (slot != std::end(ms_pedsLoaded)) {
-               int32 pedModelId = CPopCycle::PickPedMIToStreamInForCurrentZone();
-               if (pedModelId != *slot && pedModelId >= 0) {
-                   RequestModel(pedModelId, STREAMING_KEEP_IN_MEMORY | STREAMING_GAME_REQUIRED);
-                   GetInfo(pedModelId).ClearFlags(STREAMING_GAME_REQUIRED); // Ok???? Y?
+            // Find an unused slot in `ms_pedsLoaded`
+            const auto unusedPedModelSlot = std::ranges::find_if(ms_pedsLoaded, [](auto model) {
+                return model == MODEL_INVALID || CModelInfo::GetModelInfo(model)->m_nRefCount == 0;
+            });
 
-                   if (ms_numPedsLoaded == TOTAL_LOADED_PEDS) {
-                       SetModelAndItsTxdDeletable(*slot);
-                      *slot = MODEL_INVALID;
-                   } else {
-                       ++ms_numPedsLoaded;
-                   }
+            // If there is an unused slot, we unload whatever model is in it, then load a new one
+            if (unusedPedModelSlot != std::end(ms_pedsLoaded)) {
+                const auto newModelToStream = CPopCycle::PickPedMIToStreamInForCurrentZone();
+                if (newModelToStream != *unusedPedModelSlot && newModelToStream != MODEL_INVALID) {
+                    RequestModel(newModelToStream, STREAMING_KEEP_IN_MEMORY | STREAMING_GAME_REQUIRED);
+                    GetInfo(newModelToStream).ClearFlags(STREAMING_GAME_REQUIRED); // Why use the flag in the first place?
 
-                   int32 freeSlot = 0;
-                   for (; ms_pedsLoaded[freeSlot] >= 0; freeSlot++); // Find free slot
-                   ms_pedsLoaded[freeSlot] = (eModelID)pedModelId;
+                    if (ms_numPedsLoaded == TOTAL_LOADED_PEDS) {
+                        SetModelAndItsTxdDeletable(*unusedPedModelSlot);
+                        *unusedPedModelSlot = MODEL_INVALID;
+                        ms_numPedsLoaded--;
+                    }
 
-                   timeBeforeNextLoad = 300;
-               }
-           }
+                    // At this point we've either removed a model, or there was an
+                    // empty slot, so we can load it there
+                    const auto it = rng::find(ms_pedsLoaded, MODEL_INVALID);
+                    assert(it != rng::end(ms_pedsLoaded));
+                    *it = newModelToStream;
+
+                    // Increment counter now
+                    ++ms_numPedsLoaded;
+
+                    timeBeforeNextLoad = 300;
+                }
+            }
         }
     } else {
         int32 numPedsToLoad = ms_numPedsLoaded;
 
         // Unload all models from slots
         for (auto& modelId : ms_pedsLoaded) {
-            if (modelId >= 0) {
+            if (modelId != MODEL_INVALID) {
                 SetModelAndItsTxdDeletable(modelId);
                 modelId = MODEL_INVALID;
             }
@@ -3593,13 +3599,10 @@ void CStreaming::StreamZoneModels(const CVector& unused) {
 
         numPedsToLoad = std::max(numPedsToLoad, 4); // Loads back the same count of models as before unloading them, but at least 4.
         for (int32 i = 0; i < numPedsToLoad; i++) {
-            int32 pedModelId = CPopCycle::PickPedMIToStreamInForCurrentZone();
-            if (pedModelId < 0) {
-                ms_pedsLoaded[i] = MODEL_INVALID;
-            } else {
-                RequestModel(pedModelId, STREAMING_KEEP_IN_MEMORY | STREAMING_GAME_REQUIRED);
-                GetInfo(pedModelId).ClearFlags(STREAMING_GAME_REQUIRED);
-                ms_pedsLoaded[i] = (eModelID)pedModelId;
+            ms_pedsLoaded[i] = CPopCycle::PickPedMIToStreamInForCurrentZone();
+            if (ms_pedsLoaded[i] != MODEL_INVALID) {{
+                RequestModel(ms_pedsLoaded[i], STREAMING_KEEP_IN_MEMORY | STREAMING_GAME_REQUIRED);
+                GetInfo(ms_pedsLoaded[i]).ClearFlags(STREAMING_GAME_REQUIRED);
                 ms_numPedsLoaded++;
             }
         }
