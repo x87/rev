@@ -181,6 +181,7 @@ public:
     void RemoveEscalatorsForEntity();
     bool IsEntityOccluded();
     bool IsInCurrentAreaOrBarberShopInterior();
+    bool IsInCurrentArea() const;
     void UpdateRW();
     // Always returns a non-null value. In case there's no LOD object `this` is returned. NOTSA
     CEntity* FindLastLOD() noexcept;
@@ -189,6 +190,8 @@ public:
     auto GetModelId() const { return (eModelID)m_nModelIndex; }
     CBaseModelInfo* GetModelInfo() const;
     CCollisionData* GetColData() { return GetColModel()->m_pColData; }
+
+    auto GetModelID() const { return (eModelID)(m_nModelIndex); }
 
     // Wrapper around the mess called `CleanUpOldReference`
     // Takes in `ref` (which is usually a member variable),
@@ -216,6 +219,7 @@ public:
         }
     }
 
+    // Register a reference to the entity that is stored in that given reference
     template<typename T>
     static void RegisterReference(T*& ref) requires std::is_base_of_v<CEntity, T> {
         ref->RegisterReference(reinterpret_cast<CEntity**>(&ref));
