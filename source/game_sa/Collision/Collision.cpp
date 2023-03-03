@@ -3009,6 +3009,7 @@ bool CCollision::CameraConeCastVsWorldCollision(
     gpColCache  = &caches[0];
     gpColCache2 = &caches[1];
 
+    // This fills up cache[0]
     if (!BuildCacheOfCameraCollision(spA, spB)) {
         return false;
     }
@@ -3026,6 +3027,8 @@ bool CCollision::CameraConeCastVsWorldCollision(
     // Since writing to overlapping arrays is a bad idea we use 2 caches
     // one is the current, other one is the next one to use
     size_t cacheToUse = 0;
+    ColCache *currCache = &caches[0],
+             *nextCache = &caches[1];
 
     // Now, we do a badass binary search to find the closest 
     // possible distance to the collision such that the camera
@@ -3038,10 +3041,10 @@ bool CCollision::CameraConeCastVsWorldCollision(
 
         spCam.m_fRadius = spRadius * dst;
 
-        if (int32 numOut = 0; SphereCastVsCaches(spCam, velocity * dst, gColCacheNumEntries, caches[cacheToUse].data(), numOut, caches[(cacheToUse + 1) % 2].data())) {
+        if (int32 numOut = 0; SphereCastVsCaches(spCam, velocity * dst, gColCacheNumEntries, currCache->data(), numOut, nextCache->data())) {
             gColCacheNumEntries = numOut;
-            cacheToUse          = (cacheToUse + 1) % 2;
             max                 = dst;
+            std::swap(currCache, nextCache); // The "next" cache always contains the items that collided this time, so we swap, and iterate on that, and so on...
         } else {
             min = dst;
         }
@@ -3059,9 +3062,9 @@ bool CCollision::SphereVsEntity(CColSphere* sphere, CEntity* entity) {
 
 void CCollision::InjectHooks() {
     // Must be done be4 hooks are injected
-    for (auto i = 0; i < 20; i++) {
-       Tests(i);
-    }
+    //for (auto i = 0; i < 20; i++) {
+    //   Tests(i);
+    //}
 
     RH_ScopedClass(CCollision);
     RH_ScopedCategoryGlobal();
