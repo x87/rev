@@ -16,6 +16,7 @@
 #include "ControllerConfigManager.h"
 
 // 0x57B440
+// Called once a frame, unless if in cutscene
 void CMenuManager::Process() {
     if (m_bMenuActive) {
         ProcessStreaming(m_bAllStreamingStuffLoaded);

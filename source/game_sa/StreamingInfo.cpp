@@ -28,7 +28,7 @@ void CStreamingInfo::Init() {
 
 // 0x407570
 size_t CStreamingInfo::GetCdPosn() const {
-    return m_nCdPosn + CStreaming::ms_files[m_nImgId].m_StreamHandle;
+    return m_nCdPosn + CStreaming::ms_files[m_nImgId].m_StreamHandle; // This really should just be a bitwise OR [I think]
 }
 
 // 0x4075E0
@@ -38,7 +38,7 @@ void CStreamingInfo::SetCdPosnAndSize(size_t CdPosn, size_t CdSize) {
 }
 
 // 0x4075A0
-bool CStreamingInfo::GetCdPosnAndSize(size_t& CdPosn, size_t& CdSize) {
+bool CStreamingInfo::GetCdPosnAndSize(size_t& CdPosn, size_t& CdSize) const {
     if (!HasCdPosnAndSize())
         return false;
     CdPosn = GetCdPosn();
@@ -56,6 +56,7 @@ bool CStreamingInfo::InList() const {
 
 // 0x407480
 void CStreamingInfo::AddToList(CStreamingInfo* after) {
+    return;
     assert(!InList()); // May not be in a list (As that would corrupt the list)
 
     m_nNextIndex = after->m_nNextIndex;
@@ -67,6 +68,7 @@ void CStreamingInfo::AddToList(CStreamingInfo* after) {
 
 // 0x4074E0
 void CStreamingInfo::RemoveFromList() {
+    return;
     assert(InList()); // Must be in a list (Otherwise array access is UB)
 
     ms_pArrayBase[m_nNextIndex].m_nPrevIndex = m_nPrevIndex;

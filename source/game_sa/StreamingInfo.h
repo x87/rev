@@ -68,7 +68,7 @@ public:
     void Init();
     [[nodiscard]] size_t GetCdPosn() const;
     void SetCdPosnAndSize(size_t CdPosn, size_t CdSize);
-    bool GetCdPosnAndSize(size_t& CdPosn, size_t& CdSize);
+    bool GetCdPosnAndSize(size_t& CdPosn, size_t& CdSize) const;
     [[nodiscard]] bool HasCdPosnAndSize() const noexcept { return m_nCdSize != 0; }
     [[nodiscard]] auto GetCdSize() const { return m_nCdSize; }
     CStreamingInfo* GetNext() { return m_nNextIndex == -1 ? nullptr : &ms_pArrayBase[m_nNextIndex]; }

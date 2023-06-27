@@ -176,7 +176,7 @@ void CColStore::EnsureCollisionIsInMemory(const CVector& pos)
         if (!def || !def->m_bCollisionIsRequired)
             continue;
 
-        if (def->m_Area.IsPointInside(pos, -110.0F) && !CStreaming::GetInfo(COLToModelId(i)).IsLoaded()) {
+        if (def->m_Area.IsPointInside(pos, -110.0F) && !CStreaming::IsModelLoaded(COLToModelId(i))) {
             CStreaming::RequestModel(COLToModelId(i), STREAMING_PRIORITY_REQUEST | STREAMING_KEEP_IN_MEMORY);
             if (!TheCamera.GetScreenFadeStatus())
                 FrontEndMenuManager.MessageScreen("LOADCOL", false, false);
@@ -184,6 +184,8 @@ void CColStore::EnsureCollisionIsInMemory(const CVector& pos)
             CTimer::Suspend();
             CStreaming::LoadAllRequestedModels(true);
             CTimer::Resume();
+
+            assert(CStreaming::IsModelLoaded(COLToModelId(i)));
         }
 
         def->m_bCollisionIsRequired = false;
@@ -259,6 +261,7 @@ void CColStore::LoadAllCollision()
 
         CStreaming::RequestModel(COLToModelId(i), 0);
         CStreaming::LoadAllRequestedModels(false);
+        assert(CStreaming::IsModelLoaded(COLToModelId(i)));
         CStreaming::RemoveModel(COLToModelId(i));
     }
 }

@@ -1,6 +1,5 @@
 #include "StdInc.h"
 
-HANDLE(&gStreamFileHandles)[MAX_CD_STREAM_HANDLES] = *(HANDLE(*)[MAX_CD_STREAM_HANDLES])0x8E4010;
 char(&gCdImageNames)[MAX_CD_STREAM_HANDLES][MAX_CD_STREAM_IMAGE_NAME_SIZE] = *(char(*)[MAX_CD_STREAM_HANDLES][MAX_CD_STREAM_IMAGE_NAME_SIZE])0x8E4098;
 uint32& gStreamFileCreateFlags = *(uint32*)0x8E3FE0;
 CdStream*& gCdStreams = *(CdStream**)0x8E3FFC;
@@ -70,8 +69,7 @@ int32 CdStreamOpen(const char* lpFileName) {
             break;
     }
     SetLastError(NO_ERROR);
-    const DWORD dwFlagsAndAttributes = gStreamFileCreateFlags | FILE_ATTRIBUTE_READONLY | FILE_FLAG_RANDOM_ACCESS;
-    HANDLE file = CreateFileA(lpFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, dwFlagsAndAttributes, nullptr);
+    HANDLE file = CreateFileA(lpFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_RANDOM_ACCESS, nullptr);
     gStreamFileHandles[freeHandleIndex] = file;
     if (file == INVALID_HANDLE_VALUE)
         return 0;

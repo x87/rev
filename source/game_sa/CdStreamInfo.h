@@ -57,7 +57,7 @@ VALIDATE_SIZE(CdStream, 0x30);
 const int32 MAX_CD_STREAM_HANDLES = 32;
 const int32 MAX_CD_STREAM_IMAGE_NAME_SIZE = 64;
 
-extern HANDLE(&gStreamFileHandles)[MAX_CD_STREAM_HANDLES];
+static inline auto& gStreamFileHandles = StaticRef<std::array<HANDLE, MAX_CD_STREAM_HANDLES>, 0x8E4010>();
 extern char(&gCdImageNames)[MAX_CD_STREAM_HANDLES][MAX_CD_STREAM_IMAGE_NAME_SIZE];
 extern uint32& gStreamFileCreateFlags;
 extern CdStream*& gCdStreams;

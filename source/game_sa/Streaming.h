@@ -309,6 +309,7 @@ public:
     static bool IsInitialised();
     static bool IsObjectInCdImage(int32 modelId);
     static bool IsVeryBusy();
+    static bool ProcessFinishedRequests(bool onlyPriority);
     static void LoadAllRequestedModels(bool bOnlyPriorityRequests);
     static void LoadCdDirectory(const char* filename, int32 archiveId);
     static void LoadCdDirectory();
