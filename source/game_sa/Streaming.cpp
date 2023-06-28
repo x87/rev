@@ -551,7 +551,7 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
                 }
             }
         }
-
+        
         if (!bFileLoaded) {
             RemoveModel(modelId);
             RequestModel(modelId, streamingInfo.GetFlags());
@@ -606,7 +606,11 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
     }
     case eModelType::COL: {
         CMemoryMgr::PushMemId(MEM_STREAMED_COLLISION);
-        auto success = CColStore::LoadCol(ModelIdToCOL(modelId), fileBuffer, bufferSize);
+        const auto success = CColStore::LoadCol(ModelIdToCOL(modelId), fileBuffer, bufferSize);
+        // If this fails then you'll ALWAYS get a crash in `CEntity::GetBoundRect:2`
+        // as the col model WON'T be loaded for it
+        // This is due to the lack of error checking in `CColStore::LoadAllCollision`
+        assert(success); 
         CMemoryMgr::PopMemId();
         if (!success) {
             RemoveModel(modelId);
@@ -1641,14 +1645,12 @@ void CStreaming::RequestModelStream(int32 chIdx) {
     int32 modelId = GetNextFileOnCd(CdStreamGetLastPosn(), true);
     if (modelId == MODEL_INVALID)
         return;
-
     tStreamingChannel& ch = ms_channel[chIdx];
-    uint32 posn = 0;
-    uint32 nThisModelSizeInSectors = 0;
-    CStreamingInfo* streamingInfo = &GetInfo(modelId);
+
+    auto si = &GetInfo(modelId);
 
     // Find first model that has to be loaded
-    while (!streamingInfo->IsRequiredToBeKept()) {
+    while (!si->IsRequiredToBeKept()) {
         // In case of TXD/IFP's check if they're used at all, if not remove them.
         if (IsModelTXD(modelId)) {
             if (AreTexturesUsedByRequestedModels(ModelIdToTXD(modelId)))
@@ -1664,146 +1666,180 @@ void CStreaming::RequestModelStream(int32 chIdx) {
 
         RemoveModel(modelId);
 
-        streamingInfo->GetCdPosnAndSize(posn, nThisModelSizeInSectors);    // Grab pos and size of this model
-        modelId = GetNextFileOnCd(posn + nThisModelSizeInSectors, true);   // Find where the next file is after it
+        size_t pos, size;
+        si->GetCdPosnAndSize(pos, size);
+        modelId = GetNextFileOnCd(pos + size, true);   // Find where the next file is after it
         if (modelId == MODEL_INVALID)
             return; // No more models...
-        streamingInfo = &GetInfo(modelId); // Grab next file's info
+        si = &GetInfo(modelId); // Grab next file's info
     }
 
     // 0x40CC9A
     if (modelId == MODEL_INVALID)
         return;
 
-    // Grab cd pos and size for this model
-    streamingInfo->GetCdPosnAndSize(posn, nThisModelSizeInSectors);
-
     // Check if it's big 0x40CCD5
-    if (nThisModelSizeInSectors > ms_streamingBufferSize) {
+    if (si->GetCdSize() > ms_streamingBufferSize) {
         // A model is considered "big" if it doesn't fit into a single channel's buffer
-        // In which case it has to be loaded entirely by channel 0.
-        if (chIdx == 1 || !ms_channel[1].IsIdle())
+        // In which case it has to be loaded entirely by channel 0 into the whole buffer [so, using channel 1's buffer too!]
+        if (chIdx == 1 || !ms_channel[1].IsIdle()) { // If channel one is active, we have to wait first...
             return;
+        }
         ms_bLoadingBigModel = true;
+        DEV_LOG("Loading a big model!");
     }
 
     // Find all (but at most 16) consecutive models starting at `posn` and load them in one go
-    uint32 nSectorsToRead = 0; // The # of sectors to be loaded beginning at `posn`
 
     bool isPreviousLargeishBigOrVeh = false;
     bool isPreviousModelPed = false;
 
+    rng::fill(ch.modelIds, MODEL_INVALID);
+#ifdef NOTSA_DEBUG
+    rng::fill(ch.modelStreamingBufferOffsets, INT_MAX);
+#endif
+
     // 0x40CD10
-    uint32 i = 0;
-    for (; i < std::size(ch.modelIds); i++) {
-        if (modelId == MODEL_INVALID) {
-            break;
-        }
-        streamingInfo = &GetInfo(modelId);
+    uint32 numToLoad = 0, nSectorsToRead = 0;
+    for (; modelId != MODEL_INVALID && numToLoad < std::size(ch.modelIds); modelId = si->m_nNextIndexOnCd) {
+        si = &GetInfo(modelId);
 
-        if (!streamingInfo->IsRequested())
-            break; // Model not requested, so no need to load it.
+        const auto noEntriesYet = ch.modelIds[0] == MODEL_INVALID;
 
-        if (streamingInfo->GetCdSize())
-            nThisModelSizeInSectors = streamingInfo->GetCdSize();
+        assert(si->GetCdSize() != 0); // I'm pretty sure no file is supposed to have a size of 0, even though the original code seems to indicate that it's a valid scenario...
 
-        const bool isThisModelLargeish = nThisModelSizeInSectors > 200;
-
-        if (ms_numPriorityRequests && !streamingInfo->IsPriorityRequest())
-            break; // There are priority requests, but this isn't one of them
-
-        CBaseModelInfo* mi = CModelInfo::GetModelInfo(modelId);
-        if (IsModelDFF(modelId)) {
-            if (isPreviousModelPed && mi->GetModelType() == MODEL_INFO_PED)
-                break; // Don't load two peds after each other
-
-            if (isPreviousLargeishBigOrVeh && mi->GetModelType() == MODEL_INFO_VEHICLE)
-                break; // Don't load two vehicles / big model + vehicle after each other
-
-            // Check if TXD and/or IFP is loaded for this model.
-            // If not we can't load the model yet.
-
-            // Check TXD
-            if (!GetInfo(TXDToModelId(mi->m_nTxdIndex)).IsLoadedOrBeingRead())
-                break;
-
-            // Check IFP (if any)
-            const int32 animFileIndex = mi->GetAnimFileIndex();
-            if (animFileIndex != -1) {
-                if (!GetInfo(IFPToModelId(animFileIndex)).IsLoadedOrBeingRead())
-                    break;
+        // Check if the buffer would be of sufficient size
+        if (!ms_bLoadingBigModel) { // Big models take up the buffer of both channels, so they're *not* supposed to fit into this channels buffer
+            if (nSectorsToRead + si->GetCdSize() > ms_streamingBufferSize) {
+                break; // We dont, that's fine
             }
-        } else {
-            if (IsModelIFP(modelId)) {
-                if (CCutsceneMgr::IsCutsceneProcessing() || !GetInfo(MODEL_MALE01).IsLoaded())
-                    break;
+        }
+
+        if (si->IsRequested()) {
+            const bool isThisModelLargeish = si->GetCdSize() > 200;
+
+            if (ms_numPriorityRequests && !si->IsPriorityRequest()) {
+                goto skip; // There are priority requests, but this isn't one of them
+            }
+
+            CBaseModelInfo* mi = CModelInfo::GetModelInfo(modelId);
+            if (IsModelDFF(modelId)) {
+                if (isPreviousModelPed && mi->GetModelType() == MODEL_INFO_PED) {
+                    goto skip; // Don't load two peds after each other
+                }
+
+                if (isPreviousLargeishBigOrVeh && mi->GetModelType() == MODEL_INFO_VEHICLE)
+                    goto skip; // Don't load two vehicles / big model + vehicle after each other
+
+                // Check if TXD and/or IFP is loaded for this model.
+                // If not we can't load the model yet.
+
+                // Check TXD
+                if (!GetInfo(TXDToModelId(mi->m_nTxdIndex)).IsLoadedOrBeingRead()) {
+                    goto skip;
+                }
+
+
+                // Check IFP (if any)
+                const int32 animFileIndex = mi->GetAnimFileIndex();
+                if (animFileIndex != -1) {
+                    if (!GetInfo(IFPToModelId(animFileIndex)).IsLoadedOrBeingRead()) {
+                        goto skip;
+                    }
+                }
             } else {
-                if (isPreviousLargeishBigOrVeh && isThisModelLargeish)
-                    break; // Do not load a big model/car and a big model after each other
+                if (IsModelIFP(modelId)) {
+                    if (CCutsceneMgr::IsCutsceneProcessing() || !GetInfo(MODEL_MALE01).IsLoaded()) {
+                        goto skip;
+                    }
+                } else {
+                    if (isPreviousLargeishBigOrVeh && isThisModelLargeish) {
+                        goto skip; // Do not load a big model/car and a big model after each other
+                    }
+                }
             }
-        }
 
-        // At this point we've made sure the model can be loaded
-        // so let's add it to the channel.
+            // At this point we've made sure the model can be loaded
+            // so let's add it to the channel.
 
-        // Set offset where the model's data begins at
-        ch.modelStreamingBufferOffsets[i] = nSectorsToRead;
+            // Set the corresponding modelId
+            ch.modelIds[numToLoad] = modelId;
 
-        // Set the corresponding modelId
-        ch.modelIds[i] = modelId;
-
-        // `i == 0` is a special case:
-        // If the 0th model doesn't fit into the buffer it's a `big` one
-        // so `ms_bLoadingBigModel` is set already (before the `for` loop).
-        // But we still need to continue to set the appropriate states for the
-        // model, thus we can't just `break` (which would also cause the loop below setting modelId slots `-1`'s to override the modelId)
-        if (i > 0) {
-            // Check if this model + all the previous fits into one channel's buffer
-            if (nSectorsToRead + nThisModelSizeInSectors > ms_streamingBufferSize) {
-                // No, so stop at the previous model, and ignore this one
-                break;
-            }
-        }
-        nSectorsToRead += nThisModelSizeInSectors;
-
-        if (IsModelDFF(modelId)) {
-            switch (mi->GetModelType()) {
-            case ModelInfoType::MODEL_INFO_PED:
-                isPreviousModelPed = true;
-                break;
-            case ModelInfoType::MODEL_INFO_VEHICLE:
-                isPreviousLargeishBigOrVeh = true; // I guess all vehicles are considered big?
-                break;
-            }
-        } else {
-            if (isThisModelLargeish)
+            // No fucking clue
+            if (IsModelDFF(modelId)) {
+                switch (mi->GetModelType()) {
+                case ModelInfoType::MODEL_INFO_PED:
+                    isPreviousModelPed = true;
+                    break;
+                case ModelInfoType::MODEL_INFO_VEHICLE:
+                    isPreviousLargeishBigOrVeh = true; // I guess all vehicles are considered big?
+                    break;
+                }
+            } else if (isThisModelLargeish) {
                 isPreviousLargeishBigOrVeh = true;
-        }
+            }
 
-        // Modify the state of models
-        {
-            streamingInfo->m_nLoadState = LOADSTATE_READING; // Set as being read
-            streamingInfo->RemoveFromList(); // Remove from it's current list (That is the requested list)
+            // Modify the state of models
+            si->m_nLoadState = LOADSTATE_READING; // Set as being read
+            si->RemoveFromList(); // Remove from it's current list (That is the requested list)
             ms_numModelsRequested--;
-            if (streamingInfo->IsPriorityRequest()) {
-                streamingInfo->ClearFlags(STREAMING_PRIORITY_REQUEST); // Remove priority request flag, as its not a request anymore.
+            if (si->IsPriorityRequest()) {
+                si->ClearFlags(STREAMING_PRIORITY_REQUEST); // Remove priority request flag, as its not a request anymore.
                 ms_numPriorityRequests--;
             }
+        } else {
+        skip:
+            // If there are no models before this one that have to be loaded we can just skip it altogether
+            if (noEntriesYet) {
+                continue;
+            }
+
+            // Otherwise load this model into the buffer [it will not be loaded into the game tho]
+            ch.modelIds[numToLoad]                    = MODEL_INVALID;
         }
 
-        modelId = streamingInfo->m_nNextIndexOnCd; // Continue onto the next one in the directory
+        ch.modelStreamingBufferOffsets[numToLoad]  = nSectorsToRead;
+        nSectorsToRead                            += si->GetCdSize();
+
+        numToLoad++;
+
+        // Big models are lonely
+        if (ms_bLoadingBigModel) {
+            break;
+        }
     }
 
-    // Set remaining modelId slots to `-1`
-    for (auto j = i; j < std::size(ch.modelIds); j++) {
-        ch.modelIds[j] = MODEL_INVALID;
+    // Nothing to read?
+    if (!numToLoad) {
+        return;
     }
 
-    CdStreamRead(chIdx, ms_pStreamingBuffer[chIdx], posn, nSectorsToRead); // Request models to be read
+    // Backtrace to first valid model [this way we cut-off the excess from the end of the buffer]
+    size_t lastValidIdx = numToLoad - 1;
+    for (; lastValidIdx; lastValidIdx--) {
+        if (ch.modelIds[lastValidIdx] != MODEL_INVALID) {
+            break;
+        }
+    }
+    if (lastValidIdx != std::size(ch.modelIds) - 1 /*not the last*/ && numToLoad - 1 != lastValidIdx/*is actually changing*/) {
+        nSectorsToRead = ch.modelStreamingBufferOffsets[lastValidIdx + 1];
+    }
+    assert(nSectorsToRead); // Makes no sense to read 0 sectors
+    assert(ch.modelStreamingBufferOffsets[0] == 0); // First model has always to start at the beginning of the buffer
+    
+    std::cout << "Models to be streamed:";
+    for (auto i = 0u; i <= lastValidIdx; i++) {
+        std::cout << ch.modelIds[i] << ", ";
+    }
+    std::cout << std::endl;
+    
+    const auto readPos = GetInfo(ch.modelIds[0]).GetCdPosn();
+    assert(ms_bLoadingBigModel || nSectorsToRead <= ms_streamingBufferSize); // Sanity check
+    CdStreamRead(chIdx, ms_pStreamingBuffer[chIdx], readPos, nSectorsToRead); // Request models to be read
     ch.LoadStatus = eChannelState::READING;
     ch.iLoadingLevel = 0;
     ch.sectorCount = nSectorsToRead; // Set how many sectors to read
-    ch.offsetAndHandle = posn;       // And from where to read
+    ch.offsetAndHandle = readPos;    // And from where to read
     ch.totalTries = 0;
     if (m_bModelStreamNotLoaded)
         m_bModelStreamNotLoaded = false;
@@ -1961,8 +1997,9 @@ bool CStreaming::ProcessLoadingChannel(int32 chIdx) {
         // Load models individually
         for (uint32 i = 0u; i < std::size(ch.modelIds); i++) {
             const int32 modelId = ch.modelIds[i];
-            if (modelId == MODEL_INVALID)
+            if (modelId == MODEL_INVALID) {
                 continue;
+            }
 
             CBaseModelInfo* baseModelInfo = CModelInfo::GetModelInfo(modelId);
             CStreamingInfo& info = GetInfo(modelId);
@@ -1978,6 +2015,8 @@ bool CStreaming::ProcessLoadingChannel(int32 chIdx) {
                 }
                 const auto bufferOffsetInSectors = ch.modelStreamingBufferOffsets[i];
                 auto* fileBuffer = reinterpret_cast <uint8*> (&ms_pStreamingBuffer[chIdx][STREAMING_SECTOR_SIZE * bufferOffsetInSectors]);
+
+                //DEV_LOG("Loaded model ({}) from buffer into the game", (int)modelId);
 
                 // Actually load the model into memory
                 ConvertBufferToObject(fileBuffer, modelId);

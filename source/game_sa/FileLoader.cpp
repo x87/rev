@@ -578,7 +578,14 @@ bool CFileLoader::LoadCollisionFileFirstTime(uint8* buff, uint32 buffSize, uint8
         }
 
         if (!reinterpret_cast<FileHeader::FileInfo*>(buffIt)->IsValid()) {
-            return true; // Finished reading all data, but there's some padding left.
+#ifdef FIX_BUGS
+            // Have we read anything at all? If not, then the data [in the buffer] is invalid
+            if (buffPos == 0) {
+                return false;
+            }
+#endif
+            // Finished reading all data, but there's some padding left.
+            return true;
         }
 
         auto& header = *reinterpret_cast<FileHeader*>(buffIt);

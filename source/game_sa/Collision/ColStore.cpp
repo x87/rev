@@ -183,6 +183,7 @@ void CColStore::EnsureCollisionIsInMemory(const CVector& pos)
 
             CTimer::Suspend();
             CStreaming::LoadAllRequestedModels(true);
+            assert(CStreaming::IsModelLoaded(COLToModelId(i)));
             CTimer::Resume();
         }
 
@@ -254,11 +255,14 @@ void CColStore::LoadAllCollision()
 {
     for (auto i = 1; i < ms_pColPool->GetSize(); i++) {
         auto* def = ms_pColPool->GetAt(i);
-        if (!def)
+        if (!def) {
             continue;
+        }
 
         CStreaming::RequestModel(COLToModelId(i), 0);
         CStreaming::LoadAllRequestedModels(false);
+        assert(CStreaming::IsModelLoaded(COLToModelId(i)));
+        assert(def->m_bActive);
         CStreaming::RemoveModel(COLToModelId(i));
     }
 }
@@ -284,8 +288,9 @@ bool CColStore::LoadCol(int32 colSlot, uint8* data, int32 dataSize)
     else
         bLoaded = CFileLoader::LoadCollisionFileFirstTime(data, dataSize, colSlot);
 
-    if (!bLoaded)
+    if (!bLoaded) {
         return false;
+    }
 
     def->m_bActive = true;
     return true;
