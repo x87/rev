@@ -89,7 +89,11 @@ int32 CColStore::AddColSlot(const char* name)
     def->m_bProcedural = false;
     def->m_bInterior = false;
     def->m_Area = CRect();
+#ifdef FIX_BUGS
+    def->m_nModelIdStart = SHRT_MAX;
+#else
     def->m_nModelIdStart = -1;
+#endif
     def->m_nModelIdEnd = SHRT_MIN;
     def->m_nRefCount = 0;
 
@@ -265,6 +269,10 @@ void CColStore::LoadAllCollision()
         assert(def->m_bActive);
         CStreaming::RemoveModel(COLToModelId(i));
     }
+
+    //for (auto&& [i, def] : ms_pColPool->GetAllValidWithIndex()) {
+    //    DEV_LOG("[{}]: {}, {} - {}", i, def.m_bActive, def.m_nModelIdStart, def.m_nModelIdEnd);
+    //}
 }
 
 // 0x410690
