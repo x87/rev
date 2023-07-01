@@ -3,11 +3,25 @@
 #include <memory>
 #include <charconv>
 #include <initializer_list>
+#include <chrono>
 
 #include "Base.h"
 
 
 namespace notsa {
+template<typename Clock = std::chrono::high_resolution_clock>
+struct TimedScope {
+    TimedScope() :
+        m_begin{Clock::now()}
+    {
+    }
+
+    template<typename Duration = std::chrono::milliseconds>
+    auto DurationNow() const { return std::chrono::duration_cast<Duration>(Clock::now() - m_begin); }
+
+    Clock::time_point m_begin;
+};
+
 //template<typename TChar, size_t N>
 //struct basic_static_string {
 //    template<typename YChar>
