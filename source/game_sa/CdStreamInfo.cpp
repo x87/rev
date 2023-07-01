@@ -8,6 +8,10 @@ int32& gStreamCount = *(int32*)0x8E4090;
 int32& gOpenStreamCount = *(int32*)0x8E4094;
 int32& gStreamingInitialized = *(int32*)0x8E3FE4;
 int32& gOverlappedIO = *(int32*)0x8E3FE8;
+
+// Queue of the streams
+// The streamer thread processes based on it
+// Size of `gStreamCount + 1`
 Queue& gStreamQueue = *(Queue*)0x8E3FEC;
 HANDLE& gStreamSemaphore = *(HANDLE*)0x8E4004;
 HANDLE& gStreamingThread = *(HANDLE*)0x8E4008;
@@ -62,21 +66,39 @@ void InjectCdStreamHooks() {
     RH_ScopedGlobalInstall(CdStreamShutdown, 0x406370);
 }
 
-// 0x4067B0
-int32 CdStreamOpen(const char* lpFileName) {
-    int32 freeHandleIndex = 0;
-    for (; freeHandleIndex < MAX_CD_STREAM_HANDLES; freeHandleIndex++) {
-        if (!gStreamFileHandles[freeHandleIndex])
-            break;
+// NOTSA
+int32 CdStreamFindFreeStream() {
+    for (int32 i = 0; i < MAX_CD_STREAM_HANDLES; i++) {
+        if (!gStreamFileHandles[i]) {
+            return i;
+        }
     }
+    return -1;
+}
+
+// 0x4067B0
+int32 CdStreamOpen(const char* path) {
+    const auto idx = CdStreamFindFreeStream();
+    assert(idx != -1);
+
+    // Open the file
     SetLastError(NO_ERROR);
-    const DWORD dwFlagsAndAttributes = gStreamFileCreateFlags | FILE_ATTRIBUTE_READONLY | FILE_FLAG_RANDOM_ACCESS;
-    HANDLE file = CreateFileA(lpFileName, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, dwFlagsAndAttributes, nullptr);
-    gStreamFileHandles[freeHandleIndex] = file;
-    if (file == INVALID_HANDLE_VALUE)
+    const auto file = gStreamFileHandles[idx] = CreateFileA(
+        path,
+        GENERIC_READ,
+        FILE_SHARE_READ,
+        NULL,
+        OPEN_EXISTING,
+        gStreamFileCreateFlags | FILE_ATTRIBUTE_READONLY | FILE_FLAG_RANDOM_ACCESS,
+        nullptr
+    );
+    if (file == INVALID_HANDLE_VALUE) {
         return 0;
-    strncpy_s(gCdImageNames[freeHandleIndex], lpFileName, MAX_CD_STREAM_IMAGE_NAME_SIZE);
-    return freeHandleIndex << 24;
+    }
+
+    strncpy_s(gCdImageNames[idx], path, MAX_CD_STREAM_IMAGE_NAME_SIZE);
+
+    return idx << 24;
 }
 
 // This function halts the caller thread if CdStreamThread is still reading the file to "sync" it.
@@ -96,9 +118,11 @@ int32 CdStreamOpen(const char* lpFileName) {
 // 0x406460
 eCdStreamStatus CdStreamSync(int32 streamId) {
     CdStream& stream = gCdStreams[streamId];
+
 #ifdef APPLY_CD_STREAM_DEADLOCK_FIX
     CLockGuard lockGuard(cdStreamThreadSync);
 #endif
+
     if (gStreamingInitialized) {
         if (stream.nSectorsToRead) {
             stream.bLocked = true;
@@ -112,10 +136,12 @@ eCdStreamStatus CdStreamSync(int32 streamId) {
         }
         stream.bInUse = false;
         return stream.status;
-    } else if (gOverlappedIO && stream.hFile) {
+    }
+    else if (gOverlappedIO && stream.hFile) {
         DWORD numberOfBytesTransferred = 0;
-        if (!GetOverlappedResult(stream.hFile, &stream.overlapped, &numberOfBytesTransferred, true))
+        if (!GetOverlappedResult(stream.hFile, &stream.overlapped, &numberOfBytesTransferred, true)) {
             return eCdStreamStatus::READING_FAILURE;
+        }
     }
     return eCdStreamStatus::READING_SUCCESS;
 }
@@ -135,7 +161,8 @@ eCdStreamStatus CdStreamGetStatus(int32 streamId) {
             stream.status = eCdStreamStatus::READING_SUCCESS;
             return status;
         }
-    } else if (gOverlappedIO) {
+    }
+    else if (gOverlappedIO) {
         if (WaitForSingleObjectEx(stream.hFile, 0, 1) != WAIT_OBJECT_0)
             return eCdStreamStatus::READING;
     }
@@ -143,7 +170,7 @@ eCdStreamStatus CdStreamGetStatus(int32 streamId) {
 }
 
 // When CdStreamRead is called, it will update CdStream information for the channel and
-// signal gStreamSemaphore, so the secondary thread `CdStreamThread` can start reading the models.
+// release gStreamSemaphore, so the secondary thread `CdStreamThread` can start reading the models.
 // If this function is called with the same channelId/streamId whilst CdStreamThread is still reading the previous model
 // for the channel, then it will return false.
 // When CdStreamThread is done reading the model, then CdStreamThread will set `stream.nSectorsToRead` and `stream.bInUse` to 0,
@@ -151,70 +178,89 @@ eCdStreamStatus CdStreamGetStatus(int32 streamId) {
 // 0x406A20
 bool CdStreamRead(int32 streamId, void* lpBuffer, uint32 offsetAndHandle, int32 sectorCount) {
     CdStream& stream = gCdStreams[streamId];
+
     gLastCdStreamPosn = sectorCount + offsetAndHandle;
-    const uint32 sectorOffset = offsetAndHandle & 0xFFFFFF;
+
+    const auto sectorOffset = offsetAndHandle & 0xFFFFFF;
     stream.hFile = gStreamFileHandles[offsetAndHandle >> 24];
+
     SetLastError(NO_ERROR);
+
     if (gStreamingInitialized) {
-        if (stream.nSectorsToRead || stream.bInUse)
+        if (stream.nSectorsToRead || stream.bInUse) { // Already reading, so do nothing [NOTE: Why the fuck is the file handle above modified in this case?]
             return false;
+        }
         stream.status = eCdStreamStatus::READING_SUCCESS;
         stream.nSectorOffset = sectorOffset;
         stream.nSectorsToRead = sectorCount;
         stream.lpBuffer = lpBuffer;
         stream.bLocked = false;
-        AddToQueue(&gStreamQueue, streamId);
-        if (!ReleaseSemaphore(gStreamSemaphore, 1, nullptr))
-            DEV_LOG("Signal Sema Error");
+        AddToQueue(&gStreamQueue, streamId); // Queue this stream to be processed by the streaming thread
+        VERIFY(ReleaseSemaphore(gStreamSemaphore, 1, nullptr)); // Initiate the streamer thread now
         return true;
     }
-    const DWORD numberOfBytesToRead = sectorCount * STREAMING_SECTOR_SIZE;
-    const DWORD overlappedOffset = sectorOffset * STREAMING_SECTOR_SIZE;
-    if (gOverlappedIO) {
-        LPOVERLAPPED overlapped = &gCdStreams[streamId].overlapped;
-        overlapped->Offset = overlappedOffset;
-        if (ReadFile(stream.hFile, lpBuffer, numberOfBytesToRead, nullptr, overlapped) || GetLastError() == ERROR_IO_PENDING)
-            return true;
-        return false;
+    else { // Otherwise, read on this thread [Though, we still might use overlapped IO]
+        const auto toReadBytes = sectorCount * STREAMING_SECTOR_SIZE;
+        const auto offsetBytes = sectorOffset * STREAMING_SECTOR_SIZE;
+        if (gOverlappedIO) {
+            const auto overlapped = &gCdStreams[streamId].overlapped;
+            overlapped->Offset = offsetBytes;
+            return ReadFile(stream.hFile, lpBuffer, toReadBytes, nullptr, overlapped) || GetLastError() == ERROR_IO_PENDING; // IO pending just means that we still haven't finished reading the overlapped
+        }
+        else {
+            SetFilePointer(stream.hFile, offsetBytes, nullptr, 0);
+            return ReadFile(stream.hFile, lpBuffer, toReadBytes, nullptr, nullptr);
+        }
     }
-    SetFilePointer(stream.hFile, overlappedOffset, nullptr, 0);
-    DWORD numberOfBytesRead = 0;
-    return ReadFile(stream.hFile, lpBuffer, numberOfBytesToRead, &numberOfBytesRead, nullptr);
 }
 
 // 0x406560
+// The main streamer/reader thread.
+// Workflow:
+// 1. Wait for `gStreamSemaphore` to be released
+// 2. Pop the next stream in `gStreamQueue`
+// 3. Process it [Wait for `ReadFile` to finish]
 [[noreturn]] void WINAPI CdStreamThread(LPVOID lpParam) {
     while (true) {
+        // Wait for the sema to be released
         WaitForSingleObject(gStreamSemaphore, INFINITE);
-        const int32 streamId = GetFirstInQueue(&gStreamQueue);
-        CdStream& stream = gCdStreams[streamId];
+
+        // Get next stream in the queue
+        auto& stream = gCdStreams[GetFirstInQueue(&gStreamQueue)];
+
+        // We're currently reading from it, so mark it as such
         stream.bInUse = true;
+
+        // Now, if the previous state was good, read, otherwise don't do anything
         if (stream.status == eCdStreamStatus::READING_SUCCESS) {
-            const DWORD numberOfBytesToRead = stream.nSectorsToRead * STREAMING_SECTOR_SIZE;
-            const DWORD overlappedOffset = stream.nSectorOffset * STREAMING_SECTOR_SIZE;
-            if (gOverlappedIO) {
-                stream.overlapped.Offset = overlappedOffset;
-                if (ReadFile(stream.hFile, stream.lpBuffer, numberOfBytesToRead, nullptr, &stream.overlapped)) {
-                    stream.status = eCdStreamStatus::READING_SUCCESS;
-                } else if (GetLastError() != ERROR_IO_PENDING) {
-                    stream.status = eCdStreamStatus::READING_FAILURE;
-                } else {
-                    DWORD numberOfBytesTransferred = 0;
-                    if (GetOverlappedResult(stream.hFile, &stream.overlapped, &numberOfBytesTransferred, true))
-                        stream.status = eCdStreamStatus::READING_SUCCESS;
-                    else
-                        stream.status = eCdStreamStatus::READING_FAILURE;
+            const DWORD toReadBytes = stream.nSectorsToRead * STREAMING_SECTOR_SIZE;
+            const DWORD offsetBytes = stream.nSectorOffset * STREAMING_SECTOR_SIZE;
+            stream.status = [&]() -> bool {
+                if (gOverlappedIO) {
+                    stream.overlapped.Offset = offsetBytes;
+
+                    // Try reading the overlapped
+                    if (!ReadFile(stream.hFile, stream.lpBuffer, toReadBytes, nullptr, &stream.overlapped) && GetLastError() != ERROR_IO_PENDING) {
+                        return false;
+                    }
+
+                    // There's an IO pending, so wait for our it/them to complete
+                    if (DWORD readBytes = 0; !GetOverlappedResult(stream.hFile, &stream.overlapped, &readBytes, true)) {
+                        return false;
+                    }
+
+                    // We're good
+                    return true;
+                } else { // Not using overlapped, so read directly
+                    return SetFilePointerEx(stream.hFile, LARGE_INTEGER{ offsetBytes }, nullptr, FILE_BEGIN) // NOTSA: Using `Ex` function instead
+                        && ReadFile(stream.hFile, stream.lpBuffer, toReadBytes, nullptr, nullptr);
                 }
-            } else {
-                SetFilePointer(stream.hFile, overlappedOffset, nullptr, 0u);
-                DWORD numberOfBytesRead = 0;
-                if (ReadFile(stream.hFile, stream.lpBuffer, numberOfBytesToRead, &numberOfBytesRead, nullptr))
-                    stream.status = eCdStreamStatus::READING_SUCCESS;
-                else
-                    stream.status = eCdStreamStatus::READING_FAILURE;
-            }
+            }() ? eCdStreamStatus::READING_SUCCESS : eCdStreamStatus::READING_FAILURE;
         }
+
+        // Stream processed, so remove it from the queue
         RemoveFirstInQueue(&gStreamQueue);
+
 #ifdef APPLY_CD_STREAM_DEADLOCK_FIX
         CLockGuard lockGuard(cdStreamThreadSync);
 #endif
@@ -230,6 +276,7 @@ bool CdStreamRead(int32 streamId, void* lpBuffer, uint32 offsetAndHandle, int32 
 // 0x4068F0
 void CdStreamInitThread() {
     SetLastError(NO_ERROR);
+
     for (auto& stream : std::span{ gCdStreams, (size_t)gStreamCount }) {
         HANDLE hSemaphore = OS_SemaphoreCreate(2, nullptr);
         stream.sync.hSemaphore = hSemaphore;
@@ -238,19 +285,29 @@ void CdStreamInitThread() {
             return;
         }
     }
+
     InitialiseQueue(&gStreamQueue, gStreamCount + 1);
+
     gStreamSemaphore = OS_SemaphoreCreate(5, "CdStream");
-    if (gStreamSemaphore) {
-        gStreamingThread = CreateThread(nullptr, 0x10000, (LPTHREAD_START_ROUTINE)CdStreamThread, nullptr, CREATE_SUSPENDED, &gStreamingThreadId);
-        if (gStreamingThread) {
-            SetThreadPriority(gStreamingThread, GetThreadPriority(GetCurrentThread()));
-            ResumeThread(gStreamingThread);
-        } else {
-            DEV_LOG("cdvd_stream: failed to create streaming thread");
-        }
-    } else {
+    if (!(gStreamSemaphore = OS_SemaphoreCreate(5, "CdStream"))) {
         DEV_LOG("cdvd_stream: failed to create stream semaphore");
+        return;
     }
+
+    if (!(gStreamingThread = CreateThread(
+        nullptr,
+        0x10000,
+        (LPTHREAD_START_ROUTINE)CdStreamThread,
+        nullptr,
+        CREATE_SUSPENDED,
+        &gStreamingThreadId))
+        ) {
+        DEV_LOG("cdvd_stream: failed to create streaming thread");
+        return;
+    }
+
+    SetThreadPriority(gStreamingThread, GetThreadPriority(GetCurrentThread()));
+    ResumeThread(gStreamingThread);
 }
 
 // 0x406B70
