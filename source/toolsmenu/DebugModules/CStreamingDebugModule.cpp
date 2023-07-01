@@ -1,5 +1,6 @@
 #include "StdInc.h"
 
+#include <extensions/utility.hpp>
 #include "CStreamingDebugModule.h"
 #include "Streaming.h"
 
@@ -92,8 +93,31 @@ void CStreamingDebugModule::RenderWindow() {
         CStreaming::ReInit();
     }
 
-    Text("Memory: %u KiB", CStreaming::ms_memoryUsedBytes / 1024);
-    Text("Buffer size: %u Sectors (%u KiB)", CStreaming::ms_streamingBufferSize, CStreaming::ms_streamingBufferSize * STREAMING_SECTOR_SIZE / 1024);
+    if (Button("Speed Test")) {
+        using namespace std::chrono;
+        using Clock = high_resolution_clock;
+        {
+            notsa::TimedScope<Clock> ts{};
+
+            uint32 cnt = 0;
+            for (auto i = 0; i < 6000; i++) {
+                if (!CModelInfo::GetModelInfo(i)) {
+                    continue;
+                }
+                CStreaming::RequestModel(i, STREAMING_KEEP_IN_MEMORY | STREAMING_MISSION_REQUIRED | STREAMING_GAME_REQUIRED);
+                cnt++;
+            }
+            DEV_LOG("Requested models ({}) in {}", cnt, ts.DurationNow());
+        }
+        {
+            notsa::TimedScope<Clock> ts{};
+            CStreaming::LoadAllRequestedModels(false);
+            DEV_LOG("LoadAllRequestedModels in {}", ts.DurationNow());
+        }
+    }
+
+    Text("Memory: %u/%u KiB", CStreaming::ms_memoryUsedBytes / 1024, CStreaming::ms_memoryAvailable / 1024);
+    Text("Buffer size: %u Sectors (%u KiB)", CStreaming::GetWholeBufferSize(), CStreaming::GetWholeBufferSize() * STREAMING_SECTOR_SIZE / 1024);
 
     DrawListSizes();
     DrawChannelStates();
