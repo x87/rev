@@ -12,6 +12,9 @@ size_t& CStreaming::ms_memoryAvailable = *reinterpret_cast<size_t*>(0x8A5A80); /
 uint32& CStreaming::desiredNumVehiclesLoaded = *reinterpret_cast<uint32*>(0x8A5A84);
 bool& CStreaming::ms_bLoadVehiclesInLoadScene = *reinterpret_cast<bool*>(0x8A5A88);
 
+// Streaming buffer size set in the `ini` (`ReadIniFile`)
+uint32 ms_ConfigStreamingBufSizeKB = 0;
+
 // Default models for each level (see eLevelNames)
 int32(&CStreaming::ms_aDefaultCopCarModel)[5] = *(int32(*)[5])0x8A5A8C; // Last one is bike cop, not matching any level name
 int32(&CStreaming::ms_aDefaultCopModel)[5] = *(int32(*)[5])0x8A5AA0; // Last one is bike cop, not matching any level name
@@ -26,10 +29,9 @@ int32& CStreaming::ms_DefaultCopBikerModel = *(&ms_aDefaultCopModel[4]);
 
 uint32& CStreaming::ms_nTimePassedSinceLastCopBikeStreamedIn = *reinterpret_cast<uint32*>(0x9654C0);
 CDirectory*& CStreaming::ms_pExtraObjectsDir = *reinterpret_cast<CDirectory**>(0x8E48D0);
-tStreamingFileDesc (&CStreaming::ms_files)[TOTAL_IMG_ARCHIVES] = *(tStreamingFileDesc(*)[TOTAL_IMG_ARCHIVES])0x8E48D8;
+tStreamingFileDesc(&CStreaming::ms_files)[TOTAL_IMG_ARCHIVES] = *(tStreamingFileDesc(*)[TOTAL_IMG_ARCHIVES])0x8E48D8;
 bool& CStreaming::ms_bLoadingBigModel = *reinterpret_cast<bool*>(0x8E4A58);
 // There are only two channels within CStreaming::ms_channel
-tStreamingChannel(&CStreaming::ms_channel)[2] = *(tStreamingChannel(*)[2])0x8E4A60;
 int32& CStreaming::ms_channelError = *reinterpret_cast<int32*>(0x8E4B90);
 bool& CStreaming::m_bHarvesterModelsRequested = *reinterpret_cast<bool*>(0x8E4B9C);
 bool& CStreaming::m_bStreamHarvesterModelsThisFrame = *reinterpret_cast<bool*>(0x8E4B9D);
@@ -51,7 +53,7 @@ int32(&CStreaming::ms_imageOffsets)[6] = *(int32(*)[6])0x8E4C8C;
 bool& CStreaming::ms_bEnableRequestListPurge = *reinterpret_cast<bool*>(0x8E4CA4);
 
 uint32& CStreaming::ms_streamingBufferSize = *reinterpret_cast<uint32*>(0x8E4CA8);
-uint8* (&CStreaming::ms_pStreamingBuffer)[2] = *reinterpret_cast<uint8*(*)[2]>(0x8E4CAC);
+uint8* (&CStreaming::ms_pStreamingBuffer)[2] = *reinterpret_cast<uint8 * (*)[2]>(0x8E4CAC);
 
 uint32& CStreaming::ms_memoryUsedBytes = *reinterpret_cast<uint32*>(0x8E4CB4);
 int32& CStreaming::ms_numModelsRequested = *reinterpret_cast<int32*>(0x8E4CB8);
@@ -2177,10 +2179,14 @@ void CStreaming::ReadIniFile() {
             {
                 FrontEndMenuManager.m_PrefsBrightness = strtol(value, nullptr, 10);
             }
+            else if (!_stricmp(attribute, "buffer_size"))
+            {
+                ms_ConfigStreamingBufSizeKB = strtol(value, nullptr, 10);
+            }
         }
         else
         {
-            ms_memoryAvailable = strtol(value, nullptr, 10) << 10;
+            ms_memoryAvailable = strtol(value, nullptr, 10) << 10; // kb to bytes
         }
     }
     CFileMgr::CloseFile(file);

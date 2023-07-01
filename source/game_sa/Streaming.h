@@ -167,8 +167,10 @@ struct tStreamingFileDesc {
 VALIDATE_SIZE(tStreamingFileDesc, 0x30);
 
 struct tStreamingChannel {
-    int32               modelIds[16];
-    int32               modelStreamingBufferOffsets[16];
+    constexpr static inline size_t NUM_MAX_MODELS_PER_CHANNEL = 64;
+
+    int32               modelIds[NUM_MAX_MODELS_PER_CHANNEL];
+    int32               modelStreamingBufferOffsets[NUM_MAX_MODELS_PER_CHANNEL];
     eChannelState       LoadStatus;
     int32               iLoadingLevel; // the value gets modified, but it's not used
     int32               offsetAndHandle;
@@ -176,12 +178,11 @@ struct tStreamingChannel {
     int32               totalTries;
     eCdStreamStatus     m_nCdStreamStatus;
 
-    [[nodiscard]] bool IsIdle() const noexcept    { return LoadStatus == eChannelState::IDLE; }
+    [[nodiscard]] bool IsIdle() const noexcept { return LoadStatus == eChannelState::IDLE; }
     [[nodiscard]] bool IsReading() const noexcept { return LoadStatus == eChannelState::READING; }
     [[nodiscard]] bool IsStarted() const noexcept { return LoadStatus == eChannelState::STARTED; }
 };
-
-VALIDATE_SIZE(tStreamingChannel, 0x98);
+//VALIDATE_SIZE(tStreamingChannel, 0x98);
 
 class CStreaming {
 public:
@@ -202,10 +203,10 @@ public:
     static int32(&ms_aDefaultFiremanModel)[4];
 
     static CDirectory*& ms_pExtraObjectsDir;
-    static tStreamingFileDesc (&ms_files)[TOTAL_IMG_ARCHIVES];
+    static tStreamingFileDesc(&ms_files)[TOTAL_IMG_ARCHIVES];
     static bool& ms_bLoadingBigModel;
     // There are only two channels within CStreaming::ms_channel
-    static tStreamingChannel(&ms_channel)[2];
+    static inline std::array<tStreamingChannel, 2> ms_channel{};
     static int32& ms_channelError;
     static bool& m_bHarvesterModelsRequested;
     static bool& m_bStreamHarvesterModelsThisFrame;
@@ -237,7 +238,7 @@ public:
     static int32(&ms_imageOffsets)[6]; // initialized but never used?
 
     static bool& ms_bEnableRequestListPurge;
-    static uint32& ms_streamingBufferSize;
+    static uint32& ms_streamingBufferSize; //! Size [in sectors] of the buffer for one channel. The get the whole buffer's size multiply by the number of channels [by default 2]
     static uint8* (&ms_pStreamingBuffer)[2];
     static uint32& ms_memoryUsedBytes;
     static int32& ms_numModelsRequested;
@@ -392,4 +393,7 @@ public:
     static bool IsRequestListEmpty() { return ms_pEndRequestedList->GetPrev() == ms_pStartRequestedList; }
     static ptrdiff_t GetModelFromInfo(const CStreamingInfo* info) { return info - CStreaming::ms_aInfoForModel; }
     static auto GetLoadedPeds() { return ms_pedsLoaded | rng::views::take(ms_numPedsLoaded); }
+
+    //! Size [in sectors] of the whole [allocated] buffer
+    static auto GetWholeBufferSize() { return CStreaming::ms_streamingBufferSize * 2; }
 };
