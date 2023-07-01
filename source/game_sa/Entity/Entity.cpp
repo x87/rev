@@ -442,6 +442,12 @@ CRect* CEntity::GetBoundRect(CRect* pRect)
 CRect* CEntity::GetBoundRect_Reversed(CRect* outRect)
 {
     CColModel* colModel = CModelInfo::GetModelInfo(m_nModelIndex)->GetColModel();
+
+    // A crash likely is most likely caused by an IPL not being loaded.
+    // The way game loads collisions for LODs is by loading IPL's
+    // and then linking them (see `LinkLods` - the function responsible for setting related model collisions)
+    assert(colModel);
+
     CVector vecMin = colModel->m_boundBox.m_vecMin;
     CVector vecMax = colModel->m_boundBox.m_vecMax;
     CRect rect;
