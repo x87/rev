@@ -100,7 +100,7 @@ void CStreamingDebugModule::RenderWindow() {
             notsa::TimedScope<Clock> ts{};
 
             uint32 cnt = 0;
-            for (auto i = 0; i < 6000; i++) {
+            for (auto i = 1000; i < 6000; i++) {
                 if (!CModelInfo::GetModelInfo(i)) {
                     continue;
                 }

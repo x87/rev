@@ -52,11 +52,11 @@ void List_c::RemoveItem(ListItem_c* item) {
     --m_nCount;
 }
 
-ListItem_c* List_c::GetHead() {
+ListItem_c* List_c::GetHead() const {
     return m_pHead;
 }
 
-ListItem_c* List_c::GetTail() {
+ListItem_c* List_c::GetTail() const {
     return m_pTail;
 }
 

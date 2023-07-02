@@ -26,6 +26,8 @@ public:
 public:
     static void InjectHooks();
 
+    bool IsEmpty() const { return GetHead() == nullptr; }
+
     // Add new item to the head
     void AddItem(ListItem_c* item);
 
@@ -54,10 +56,10 @@ public:
     void InsertBeforeItem(ListItem_c* addedItem, ListItem_c* pExistingItem);
 
     // Get list head
-    ListItem_c* GetHead();
+    ListItem_c* GetHead() const;
 
     // Get list head
-    ListItem_c* GetTail();
+    ListItem_c* GetTail() const;
 
     // Get next item in a list
     ListItem_c* GetNext(ListItem_c* item);

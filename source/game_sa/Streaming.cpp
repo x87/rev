@@ -13,66 +13,68 @@
 #include <atomic>
 #include <chrono>
 
-struct StreamingRequest {
+//#define STREAMING_DEBUG
+#ifndef STREAMING_DEBUG
+#undef DEV_LOG
+#define DEV_LOG(...)
+#endif
+
+struct StreamingRequest : public ListItem_c {
+    StreamingRequest(
+        eModelID model,
+        size_t sizeBytes, size_t offsetBytes,
+        HANDLE hImgFile
+    ) :
+        isPriority{ CStreaming::GetInfo(model).IsPriorityRequest() },
+        model{model},
+        sizeBytes{sizeBytes}, offsetBytes{ offsetBytes },
+        hImgFile{hImgFile}
+    {
+    }
+
     std::atomic<bool>        isPriority{};                   // Might be changed from the main thread
     eModelID                 model{eModelID::MODEL_INVALID}; // The model we're loading
     size_t                   sizeBytes{}, offsetBytes{};     // Size of the raw data in the img file
     HANDLE                   hImgFile{};                     // Handle to the img file this data is in
     std::unique_ptr<uint8[]> data{};                         // Contains the raw model data loaded from the disk
-    StreamingRequest*        next{};                         // Next request 
+    uint32                   failedCnt{};                    // Number of times loading this model has failed
 };
 
-struct FinishedRequest {
-    bool                   isPriority{};
-    eModelID               model{};
-    std::unique_ptr<uint8> data{};  // Contains the raw model data loaded from the disk
-};
 
 // Forward linked list of request [sorted by priority and insertion order]
 std::mutex s_PendingRqMtx;
-StreamingRequest* s_PendingHead{};
-std::atomic<bool> s_IsReading{true};
+std::atomic<bool> s_IsReading;
+TList_c<StreamingRequest> s_Pending{}; // FIFO queue
 //std::atomic<size_t> s_NumPriorityRqs;
 
 // Finished requests
 //std::vector<FinishedRequest> s_FinishedRqs;
 //std::atomic<StreamingRequest*> s_FinishedHead{};
 std::mutex s_FinishedRqMtx;
-//StreamingRequest* s_FinishedHead{};
-std::vector<StreamingRequest*> s_Finished;
+TList_c<StreamingRequest> s_Finished{};
+//std::vector<StreamingRequest*> s_Finished;
 
 void StreamerThreadFn() {
-    StreamingRequest *rq;
     while (true) {
-        // Load model currently in the front [Removes the request from the list]
+        // Find model to load
+        StreamingRequest *rq;
         {
             std::lock_guard g{ s_PendingRqMtx };
 
-            s_IsReading = s_PendingHead != nullptr;
-            if (!s_PendingHead) {
+            s_IsReading = !s_Pending.IsEmpty();
+            if (s_Pending.IsEmpty()) {
                 continue;
             }
 
-            // Check if there's a priority request
-            StreamingRequest* prRq = s_PendingHead, * prePrRq = nullptr; // Priority request, and the request before it
-            for (; prRq; prePrRq = prRq, prRq = prRq->next) {
-                if (prRq->isPriority) {
-                    break;
-                }
-            }
+            // Find a priority request
+            StreamingRequest* prRq = s_Pending.GetTail();
+            for (; prRq && !prRq->isPriority; prRq = s_Pending.GetPrev(prRq));
 
-            // If there is, load that, otherwise the one at the head
-            if (prRq) {
-                rq = prRq;
-                if (prePrRq) {
-                    prePrRq->next = prRq->next;
-                } else {
-                    s_PendingHead = prRq->next;
-                }
-            } else {
-                rq            = s_PendingHead;
-                s_PendingHead = rq->next;
-            }
+            rq = prRq
+                ? prRq
+                : s_Pending.GetTail();
+
+            s_Pending.RemoveItem(rq);
         }
 
         // Create the buffer
@@ -89,18 +91,8 @@ void StreamerThreadFn() {
         // Model is now loaded, put it into the finished list
         {
             std::lock_guard g{ s_FinishedRqMtx };
-            s_Finished.emplace(s_Finished.begin(), rq); // Insert at front
-            //rq->next       = s_FinishedHead;
-            //s_FinishedHead = rq;
+            s_Finished.AddItem(rq);
         }
-
-        //DEV_LOG("MODEL-READ: ({})", (int)rq->model);
-        //rq->next = s_FinishedHead.load(std::memory_order::relaxed);
-        //while (!s_FinishedHead.compare_exchange_weak(
-        //    rq->next, rq,
-        //    std::memory_order::release,
-        //    std::memory_order::relaxed
-        //));
     }
 }
 std::thread s_StreamerThread{ StreamerThreadFn };
@@ -489,18 +481,19 @@ bool CStreaming::HasVehicleUpgradeLoaded(int32 modelId) {
 }
 
 // 0x40C6B0
-bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
-    CStreamingInfo* pStartLoadedListStreamingInfo = ms_startLoadedList; // todo: useless var?
+BufferToObjectStatus CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
+    using enum BufferToObjectStatus;
+
     CBaseModelInfo* mi = CModelInfo::GetModelInfo(modelId);
-    CStreamingInfo& streamingInfo = GetInfo(modelId);
+    CStreamingInfo& si = GetInfo(modelId);
 
-    const auto bufferSize = streamingInfo.GetCdSize() * STREAMING_SECTOR_SIZE;
+    const auto bufferSize = si.GetCdSize() * STREAMING_SECTOR_SIZE;
     tRwStreamInitializeData rwStreamInitData = { fileBuffer, bufferSize };
-
     // Make RW stream from memory
     // TODO: The _ prefix seems to indicate its "private" (maybe), perhaps it was some kind of macro originally?
     // TODO/BUGFIX: Stream seemingly never closed? (But initialized multiple times)
     RwStream* stream = _rwStreamInitialize(&gRwStream, 0, rwSTREAMMEMORY, rwSTREAMREAD, &rwStreamInitData);
+    notsa::ScopeGuard guard([&] { RwStreamClose(&gRwStream, &rwStreamInitData); });
 
     switch (GetModelType(modelId)) {
     case eModelType::DFF: {
@@ -509,15 +502,17 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
         const int32& animFileIndex = mi->GetAnimFileIndex();
         const int16& nTXDIdx = mi->m_nTxdIndex;
         const TxdDef* txdDef = CTxdStore::ms_pTxdPool->GetAt(nTXDIdx);
-        // todo:: add FIX_BUGS
-        if ((txdDef && !txdDef->m_pRwDictionary) || /*check TXD (if any)*/
-            animFileIndex != -1 && !CAnimManager::ms_aAnimBlocks[animFileIndex].bLoaded /*check anim (if any)*/
-        ) {
-            // TXD or IFP not loaded, re-request model. (I don't think this is supposed to happen at all)
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
+
+        // TXD loaded yet?
+        if (txdDef && !txdDef->m_pRwDictionary) {
+            RequestModel(TXDToModelId(nTXDIdx), si.GetFlags());
+            return MISSING_DEPENDENCIES;
+        }
+
+        // DFF loaded yet?
+        if (animFileIndex != -1 && !CAnimManager::ms_aAnimBlocks[animFileIndex].bLoaded) {
+            RequestModel(IFPToModelId(animFileIndex), STREAMING_KEEP_IN_MEMORY);
+            return MISSING_DEPENDENCIES;
         }
 
         CTxdStore::AddRef(nTXDIdx);
@@ -538,12 +533,14 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
                 RtDictSchemaSetCurrentDict(&RpUVAnimDictSchema, pRtDictionary);
             }
 
+            // Close it now
             RwStreamClose(stream, &rwStreamInitData);
-
-            // TODO/BUGFIX: Stream seemingly never closed? (But initialized multiple times)
-            RwStream* stream2 = _rwStreamInitialize(&gRwStream, 0, rwSTREAMMEMORY, rwSTREAMREAD, &rwStreamInitData);
-
-            bFileLoaded = CFileLoader::LoadAtomicFile(stream2, modelId);
+            
+            // Closed later by the closer
+            bFileLoaded = CFileLoader::LoadAtomicFile(
+                _rwStreamInitialize(&gRwStream, 0, rwSTREAMMEMORY, rwSTREAMREAD, &rwStreamInitData),
+                modelId
+            );
             if (pRtDictionary) {
                 RtDictDestroy(pRtDictionary);
             }
@@ -551,27 +548,10 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
             bFileLoaded = CFileLoader::LoadClumpFile(stream, modelId);
         }
 
-        if (!streamingInfo.IsLoadingFinishing()) {
-            CTxdStore::RemoveRefWithoutDelete(mi->m_nTxdIndex);
-            if (animFileIndex != -1) {
-                CAnimManager::RemoveAnimBlockRefWithoutDelete(animFileIndex);
-            }
-
-            if (bFileLoaded && mi->GetModelType() == MODEL_INFO_VEHICLE) {
-                if (!AddToLoadedVehiclesList(modelId)) {
-                    RemoveModel(modelId);
-                    RequestModel(modelId, streamingInfo.GetFlags());
-                    RwStreamClose(stream, &rwStreamInitData);
-                    return false;
-                }
-            }
-        }
+        assert(bFileLoaded);
 
         if (!bFileLoaded) {
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
+            return GENERIC_FAIL;
         }
 
         break;
@@ -579,70 +559,39 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
     case eModelType::TXD: {
         const int32 modelTxdIndex = ModelIdToTXD(modelId);
         const TxdDef* txdDef = CTxdStore::ms_pTxdPool->GetAt(modelTxdIndex);
-        if (txdDef) {
+
+        // Model not needed anymore, unload
+        if (!si.IsRequiredToBeKept() && !AreTexturesUsedByRequestedModels(modelTxdIndex)) {
+            return NOT_NEEDED_ANYMORE;
+        }
+
+        // Check if parent is loaded yet
+        if (txdDef) { 
             const int32 parentTXDIdx = txdDef->m_wParentIndex;
             if (parentTXDIdx != -1 && !CTxdStore::GetTxd(parentTXDIdx)) {
-                // Parent not loaded, re-request..
-                RemoveModel(modelId);
-                RequestModel(modelId, streamingInfo.GetFlags());
-                RwStreamClose(stream, &rwStreamInitData);
-                return false;
+                RequestModel(TXDToModelId(parentTXDIdx), 0);
+                return MISSING_DEPENDENCIES;
             }
         }
-
-        if (!streamingInfo.IsRequiredToBeKept() && !AreTexturesUsedByRequestedModels(modelTxdIndex))
-        {
-            // Model not needed anymore, unload
-            RemoveModel(modelId);
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
-        }
-
+                
         CMemoryMgr::PushMemId(MEM_STREAMED_TEXTURES);
-        bool bTxdLoaded = false;
-        if (ms_bLoadingBigModel) {
-            bTxdLoaded = CTxdStore::StartLoadTxd(modelTxdIndex, stream);
-            if (bTxdLoaded)
-                streamingInfo.m_nLoadState = LOADSTATE_FINISHING;
-        } else {
-            bTxdLoaded = CTxdStore::LoadTxd(modelTxdIndex, stream);
-        }
+        VERIFY(CTxdStore::LoadTxd(modelTxdIndex, stream));
         CMemoryMgr::PopMemId();
+
         UpdateMemoryUsed();
-
-        assert(bTxdLoaded);
-
-        if (!bTxdLoaded) {
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
-        }
 
         break;
     }
     case eModelType::COL: {
         CMemoryMgr::PushMemId(MEM_STREAMED_COLLISION);
-        auto success = CColStore::LoadCol(ModelIdToCOL(modelId), fileBuffer, bufferSize);
+        VERIFY(CColStore::LoadCol(ModelIdToCOL(modelId), fileBuffer, bufferSize));
         CMemoryMgr::PopMemId();
-        if (!success) {
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
-        }
         break;
     }
     case eModelType::IPL: {
         CMemoryMgr::PushMemId(MEM_STREAMED_COLLISION); // ?
-        auto success = CIplStore::LoadIpl(ModelIdToIPL(modelId), (char*)fileBuffer, bufferSize);
+        VERIFY(CIplStore::LoadIpl(ModelIdToIPL(modelId), (char*)fileBuffer, bufferSize));
         CMemoryMgr::PopMemId();
-        if (!success) {
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
-        }
         break;
     }
     case eModelType::DAT: {
@@ -652,13 +601,8 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
         break;
     }
     case eModelType::IFP: {
-        if (!streamingInfo.IsRequiredToBeKept()
-            && !AreAnimsUsedByRequestedModels(ModelIdToIFP(modelId))
-        ) {
-            // Not required anymore, unload
-            RemoveModel(modelId);
-            RwStreamClose(stream, &rwStreamInitData);
-            return false;
+        if (!si.IsRequiredToBeKept() && !AreAnimsUsedByRequestedModels(ModelIdToIFP(modelId))) {
+            return NOT_NEEDED_ANYMORE;
         }
 
         // Still required, load
@@ -686,14 +630,13 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
         break;
     }
 
-    RwStreamClose(stream, &rwStreamInitData);
-
     switch (GetModelType(modelId)) {
     case eModelType::SCM:
     case eModelType::IFP:
     case eModelType::TXD: {
-        if (!streamingInfo.IsMissionOrGameRequired())
-            streamingInfo.AddToList(pStartLoadedListStreamingInfo);
+        if (!si.IsMissionOrGameRequired()) {
+            si.AddToList(ms_startLoadedList);
+        }
         break;
     }
     case eModelType::DFF: {
@@ -707,11 +650,12 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
                 // TODO: What the fuck... 0x40CAFA
                 // From what I understand its either -1 or -0, which, when casted to uint8, becomes 128 or 129
                 // Doesnt make a lot of sense to me
-                ami->m_nAlpha = -((streamingInfo.GetFlags() & (STREAMING_LOADING_SCENE | STREAMING_MISSION_REQUIRED)) != 0);
+                ami->m_nAlpha = -((si.GetFlags() & (STREAMING_LOADING_SCENE | STREAMING_MISSION_REQUIRED)) != 0);
             }
 
-            if (!streamingInfo.IsMissionOrGameRequired())
-                streamingInfo.AddToList(pStartLoadedListStreamingInfo);
+            if (!si.IsMissionOrGameRequired()) {
+                si.AddToList(ms_startLoadedList);
+            }
 
             break;
         }
@@ -720,11 +664,7 @@ bool CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 modelId) {
     }
     }
 
-    if (!streamingInfo.IsLoadingFinishing()) {
-        streamingInfo.m_nLoadState = LOADSTATE_LOADED;
-        ms_memoryUsedBytes += bufferSize;
-    }
-    return true;
+    return SUCCESS;
 }
 
 // 0x4090A0
@@ -1102,24 +1042,24 @@ bool CStreaming::Save() {
 }
 
 bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
-    //StreamingRequest* it;
-    //{
-    //    std::lock_guard g{ s_FinishedRqMtx };
-    //    it = s_FinishedHead;
-    //}
-    //for (; it; it = it->next) {
-    //for (auto it = s_FinishedHead.load(std::memory_order_relaxed); it; it = it->next) {
-    size_t nLoaded{};
-    for (;;) {
+    size_t nLoaded{}, nFailed{};
+    for (StreamingRequest* rq{}, *next{}; ; rq = next) {
         std::unique_lock lck{ s_FinishedRqMtx };
 
-        if (s_Finished.empty()) {
-            break;
+        if (!rq) {
+            // Reachable in the first iteration only
+            rq = s_Finished.GetTail(); 
+            if (!rq) {
+                return false; // Empty list
+            }
+        } else if (!next) {
+            break; // End of requests
         }
-        
-        auto rq = s_Finished.back();
 
-        // Grab current SI
+        // Grab next item here because of lifetime issues
+        next = s_Finished.GetPrev(rq);
+
+        // Grab the requested model's StreamingInfo
         auto& si = GetInfo(rq->model);
 
         // If we're loading priority only models, skip this if it isnt one
@@ -1128,27 +1068,14 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
         }
 
         // Only now pop
-        s_Finished.pop_back();
+        s_Finished.RemoveItem(rq); // NOTE: Make sure to `delete rq`!
 
         // Unlock the mutex again
         lck.unlock();
 
-        // Delete from list
-        //for (auto p = it; !s_FinishedHead.compare_exchange_weak(
-        //    p, nullptr,
-        //    std::memory_order::release,
-        //    std::memory_order::relaxed
-        //););
-        //{
-        //    std::lock_guard g{ s_FinishedRqMtx };
-        //    s_FinishedHead = it->next;
-        //}
-
-        // Smart trick to make sure it's deleted afer this point [otherwise memory leak]
-        //const std::unique_ptr<StreamingRequest> sprq(it);
-
         // Check if we still need this model
         if (!si.IsRequested()) {
+            delete rq;
             continue;
         }
 
@@ -1165,17 +1092,35 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
             if (!IsModelIPL(rq->model)) { // IPL's dont require any memory themselves
                 MakeSpaceFor(si.GetCdSize() * STREAMING_SECTOR_SIZE); 
             }
-            
-            // Actually load the model into memory
-            ConvertBufferToObject(rq->data.get(), rq->model);
 
-            si.AddToList(ms_startLoadedList);
-
-            nLoaded++;
+            using enum BufferToObjectStatus;
+            switch (const auto status = ConvertBufferToObject(rq->data.get(), rq->model)) {
+            case NOT_NEEDED_ANYMORE: { // Just forget about it
+                delete rq;
+                si.m_nLoadState = LOADSTATE_NOT_LOADED;
+                break;
+            }
+            case MISSING_DEPENDENCIES: // Dependencies requested by the function, so put it back and try loading later
+            case GENERIC_FAIL: {       // Something [somehow] went wrong, just try loading again later
+                const std::lock_guard gr{ s_FinishedRqMtx };
+                s_Finished.AddItem(rq); // Failed to load, put it back, and try again later
+                nFailed++;
+                rq->failedCnt++;
+                // Load state stays "requested"
+                break;
+            }
+            case SUCCESS: { // Sucessfully loaded, mark it as such
+                si.m_nLoadState = LOADSTATE_LOADED;
+                si.AddToList(ms_startLoadedList);
+                nLoaded++;
+                delete rq;
+                break;
+            }
+            }
         } else {
             // I think at this point it's guaranteed to be a vehicle (thus its a DFF),
             // with `STREAMING_MISSION_REQUIRED` and `STREAMING_GAME_REQUIRED` flags unset.
-
+            /*
             RemoveModel(rq->model);
 
             if (si.IsMissionOrGameRequired()) {
@@ -1186,10 +1131,12 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
             } else if (const int32 modelTxdIdx = mi->m_nTxdIndex; CTxdStore::GetNumRefs(modelTxdIdx) == 0) {
                 RemoveTxdModel(modelTxdIdx); // Unload TXD, as it has no refs
             }
+            */
+            DebugBreak(); // NOTE: I'm quite sure this is unreachable, so i cant be bothered to convert the code
         }
     }
 
-    return nLoaded != 0;
+    return (nLoaded + nFailed) != 0;
 }
 
 // There are only 2 streaming channels within CStreaming::ms_channel. In this function,
@@ -1204,13 +1151,8 @@ void CStreaming::LoadAllRequestedModels(bool bOnlyPriorityRequests) {
 
     DEV_LOG("Loading all requested models (bOnlyPriorityRequests={})", (int)bOnlyPriorityRequests);
 
-    while (true) {
-        if (!ProcessFinishedRequests(bOnlyPriorityRequests) && !s_IsReading) {
-            break;
-        }
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(10ms);
-    }
+    using namespace std::chrono_literals;
+    for (; s_IsReading || ProcessFinishedRequests(bOnlyPriorityRequests););
 
     m_bLoadingAllRequestedModels = false;
 }
@@ -1534,6 +1476,28 @@ void CStreaming::RequestModel(int32 modelId, int32 streamingFlags) {
     si.SetFlags(streamingFlags);
 
     switch (si.m_nLoadState) {
+#if 0
+    case eStreamingLoadState::LOADSTATE_REQUESTED: {
+        {
+            std::lock_guard g{ s_FinishedRqMtx };
+            if (rng::any_of(s_Finished, [&](const auto& rq) {
+                return rq->model == modelId;
+            })) {
+                break;
+            }
+        }
+        {
+            std::lock_guard g{ s_PendingRqMtx };
+            for (auto it = s_Pending.GetHead(); it; it = s_Pending.GetNext(it)) {
+                assert(it); // Model not in list, but should be
+                if (it->model == modelId) {
+                    break;
+                }
+            }
+        }
+        break;
+    }
+#endif
     case eStreamingLoadState::LOADSTATE_NOT_LOADED: {
         switch (GetModelType(modelId)) {
         case eModelType::TXD: { // Request parent (if any) TXD
@@ -1565,19 +1529,20 @@ void CStreaming::RequestModel(int32 modelId, int32 streamingFlags) {
         assert(hImgFile && hImgFile != INVALID_HANDLE_VALUE);
         const auto offsetBytes = (size_t)(posn & 0xFFFFFF) * (size_t)STREAMING_SECTOR_SIZE; // Offset in this file
 
-        // Add to request list
+        // Allocate without before locking
         const auto rq = new StreamingRequest{
-            isPriority,
             (eModelID)modelId,
             sizeInBytes, offsetBytes,
             hImgFile
         };
+        
+        // Add to request list now
         {
             std::lock_guard g{ s_PendingRqMtx };
-            if (s_PendingHead) {
-                rq->next = s_PendingHead->next;
-            }
-            s_PendingHead = rq;
+            // Must set this here, otherwise
+            // If `LoadAllRequestedModels` is called *immediately* after this then a race condition will occur
+            s_IsReading = true;
+            s_Pending.AddItem(rq);
         }
 
         si.SetFlags(streamingFlags);
@@ -1876,7 +1841,9 @@ void CStreaming::PurgeRequestList() {
 // - Unloading all scripts
 // - Deleting all RW objects
 void CStreaming::ReInit() {
+#ifdef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
     CTheScripts::StreamedScripts.ReInitialise();
+#endif
     FlushRequestList();
     DeleteAllRwObjects();
     RemoveAllUnusedModels();
@@ -1888,9 +1855,11 @@ void CStreaming::ReInit() {
             SetMissionDoesntRequireModel(modelId);
     }
 
+#ifdef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
     for (int32 scmId = 0; scmId < TOTAL_SCM_MODEL_IDS; scmId++) {
         RemoveModel(SCMToModelId(scmId));
     }
+#endif
 
     ms_disableStreaming = false;
     ms_currentZoneType = -1;
@@ -2278,6 +2247,8 @@ void CStreaming::RemoveModel(int32 modelId) {
         return; // Nothing to do
     }
 
+    DEV_LOG("REMOVE-MODEL: {}", modelId);
+
     si.RemoveFromList(); // Remove from loaded list
 
     if (si.IsLoaded()) {
@@ -2462,8 +2433,8 @@ void CStreaming::LoadRequestedModels() {
 // Removes all models found in the `requested` list
 void CStreaming::FlushRequestList() {
     std::lock_guard g{ s_PendingRqMtx };
-    for (StreamingRequest *it = s_PendingHead, *next; it; it = next) {
-        next = it; // Have to do it like this, because current iterator is invalidated when `RemoveModel` is called
+    for (StreamingRequest *it = s_Pending.GetHead(), *next; it; it = next) {
+        next = s_Pending.GetNext(it); // Have to do it like this, because current iterator is invalidated when `RemoveModel` is called
 
         RemoveModel(it->model);
     }

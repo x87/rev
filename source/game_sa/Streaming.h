@@ -18,6 +18,13 @@ class CEntity;
 class CLoadedCarGroup;
 class CDirectory;
 
+enum class BufferToObjectStatus {
+    SUCCESS = 0,
+    MISSING_DEPENDENCIES = 1,
+    NOT_NEEDED_ANYMORE = 2,
+    GENERIC_FAIL = 3,
+};
+
 enum class eChannelState
 {
     // Doing nothing
@@ -268,7 +275,7 @@ public:
     static bool AreTexturesUsedByRequestedModels(int32 txdModelId);
     static void ClearFlagForAll(uint32 streamingFlag);
     static void ClearSlots(uint32 totalSlots);
-    static bool ConvertBufferToObject(uint8* pFileBuffer, int32 modelId);
+    static BufferToObjectStatus ConvertBufferToObject(uint8* pFileBuffer, int32 modelId);
     static void DeleteAllRwObjects();
     static bool DeleteLeastUsedEntityRwObject(bool bNotOnScreen, int32 flags);
     static void DeleteRwObjectsAfterDeath(const CVector& point);
@@ -393,4 +400,5 @@ public:
     static bool IsRequestListEmpty() { return ms_pEndRequestedList->GetPrev() == ms_pStartRequestedList; }
     static ptrdiff_t GetModelFromInfo(const CStreamingInfo* info) { return info - CStreaming::ms_aInfoForModel; }
     static auto GetLoadedPeds() { return ms_pedsLoaded | rng::views::take(ms_numPedsLoaded); }
+    static auto GetWholeBufferSize() { return ms_streamingBufferSize * 2; }
 };
