@@ -56,7 +56,6 @@ bool CStreamingInfo::InList() const {
 
 // 0x407480
 void CStreamingInfo::AddToList(CStreamingInfo* after) {
-    return;
     assert(!InList()); // May not be in a list (As that would corrupt the list)
 
     m_nNextIndex = after->m_nNextIndex;
@@ -68,7 +67,6 @@ void CStreamingInfo::AddToList(CStreamingInfo* after) {
 
 // 0x4074E0
 void CStreamingInfo::RemoveFromList() {
-    return;
     assert(InList()); // Must be in a list (Otherwise array access is UB)
 
     ms_pArrayBase[m_nNextIndex].m_nPrevIndex = m_nPrevIndex;

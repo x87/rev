@@ -631,14 +631,6 @@ BufferToObjectStatus CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 
     }
 
     switch (GetModelType(modelId)) {
-    case eModelType::SCM:
-    case eModelType::IFP:
-    case eModelType::TXD: {
-        if (!si.IsMissionOrGameRequired()) {
-            si.AddToList(ms_startLoadedList);
-        }
-        break;
-    }
     case eModelType::DFF: {
         // Model is a DFF
         switch (mi->GetModelType()) {
@@ -651,10 +643,6 @@ BufferToObjectStatus CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 
                 // From what I understand its either -1 or -0, which, when casted to uint8, becomes 128 or 129
                 // Doesnt make a lot of sense to me
                 ami->m_nAlpha = -((si.GetFlags() & (STREAMING_LOADING_SCENE | STREAMING_MISSION_REQUIRED)) != 0);
-            }
-
-            if (!si.IsMissionOrGameRequired()) {
-                si.AddToList(ms_startLoadedList);
             }
 
             break;
@@ -1111,7 +1099,22 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
             }
             case SUCCESS: { // Sucessfully loaded, mark it as such
                 si.m_nLoadState = LOADSTATE_LOADED;
-                si.AddToList(ms_startLoadedList);
+                switch (GetModelType(rq->model)) {
+                case eModelType::DFF: {
+                    switch (mi->GetModelType()) {
+                    case MODEL_INFO_VEHICLE:
+                    case MODEL_INFO_PED:
+                        goto skip;
+                    }
+                    [[fallthrough]];
+                }
+                case eModelType::SCM:
+                case eModelType::IFP:
+                case eModelType::TXD:
+                    si.AddToList(ms_startLoadedList);
+                }
+            skip:
+                ms_memoryUsedBytes += rq->sizeBytes;
                 nLoaded++;
                 delete rq;
                 break;
@@ -1841,7 +1844,7 @@ void CStreaming::PurgeRequestList() {
 // - Unloading all scripts
 // - Deleting all RW objects
 void CStreaming::ReInit() {
-#ifdef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
+#ifndef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
     CTheScripts::StreamedScripts.ReInitialise();
 #endif
     FlushRequestList();
@@ -1855,7 +1858,7 @@ void CStreaming::ReInit() {
             SetMissionDoesntRequireModel(modelId);
     }
 
-#ifdef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
+#ifndef NOTSA_DEBUG // NOTE/TODO: Scripts tend to just crash when reiniting.. It's a bug somewhere in our code
     for (int32 scmId = 0; scmId < TOTAL_SCM_MODEL_IDS; scmId++) {
         RemoveModel(SCMToModelId(scmId));
     }
@@ -2249,9 +2252,10 @@ void CStreaming::RemoveModel(int32 modelId) {
 
     DEV_LOG("REMOVE-MODEL: {}", modelId);
 
-    si.RemoveFromList(); // Remove from loaded list
-
     if (si.IsLoaded()) {
+        if (si.InList()) {
+            si.RemoveFromList(); // Remove from loaded list
+        }
         switch (GetModelType(modelId)) {
         case eModelType::DFF: {
             const auto mi = CModelInfo::GetModelInfo(modelId);

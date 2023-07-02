@@ -100,7 +100,7 @@ void CStreamingDebugModule::RenderWindow() {
             notsa::TimedScope<Clock> ts{};
 
             uint32 cnt = 0;
-            for (auto i = 1000; i < 6000; i++) {
+            for (auto i = 1000; i < 18000; i++) {
                 if (!CModelInfo::GetModelInfo(i)) {
                     continue;
                 }
@@ -109,7 +109,7 @@ void CStreamingDebugModule::RenderWindow() {
             }
             DEV_LOG("Requested models ({}) in {}", cnt, ts.DurationNow());
         }
-        {
+        if (false) {
             notsa::TimedScope<Clock> ts{};
             CStreaming::LoadAllRequestedModels(false);
             DEV_LOG("LoadAllRequestedModels in {}", ts.DurationNow());
