@@ -32,12 +32,18 @@ struct StreamingRequest : public ListItem_c {
     {
     }
 
-    std::atomic<bool>        isPriority{};                   // Might be changed from the main thread
+    void Remove() {
+        this->deleteable = true;
+    }
+
+    std::atomic<bool>        isPriority{};
+    std::atomic<bool>        deleteable{};                   // Whenever this request can be deleted [We can't delete directly, because of lifetime issues]
     eModelID                 model{eModelID::MODEL_INVALID}; // The model we're loading
     size_t                   sizeBytes{}, offsetBytes{};     // Size of the raw data in the img file
     HANDLE                   hImgFile{};                     // Handle to the img file this data is in
     std::unique_ptr<uint8[]> data{};                         // Contains the raw model data loaded from the disk
     uint32                   failedCnt{};                    // Number of times loading this model has failed
+    OVERLAPPED               ol{};
 };
 
 
@@ -73,8 +79,14 @@ void StreamerThreadFn() {
             rq = prRq
                 ? prRq
                 : s_Pending.GetTail();
+        }
 
+        if (rq->deleteable) {
+        delete_rq:
+            std::lock_guard g{ s_FinishedRqMtx };
             s_Pending.RemoveItem(rq);
+            delete rq;
+            continue;
         }
 
         // Create the buffer
@@ -88,9 +100,15 @@ void StreamerThreadFn() {
         VERIFY(ReadFile(rq->hImgFile, rq->data.get(), rq->sizeBytes, &numBytesRead, NULL));
         assert(numBytesRead == rq->sizeBytes); // Sanity check
 
-        // Model is now loaded, put it into the finished list
+        // Check if we still need the model
+        if (rq->deleteable) {
+            goto delete_rq;
+        }
+
+        // Model is now loaded, put it into the finished list, and remove from the requested list
         {
-            std::lock_guard g{ s_FinishedRqMtx };
+            std::lock_guard g{ s_FinishedRqMtx }, g2{ s_PendingRqMtx };
+            s_Pending.RemoveItem(rq);
             s_Finished.AddItem(rq);
         }
     }
@@ -375,67 +393,44 @@ void CStreaming::AddModelsToRequestList(const CVector& point, int32 streamingFla
 
 // 0x407AD0
 bool CStreaming::AreAnimsUsedByRequestedModels(int32 animModelId) {
-    return true; // TODO: Use new request list
-
-    for (auto info = ms_pStartRequestedList->GetNext(); info != ms_pEndRequestedList; info = info->GetNext()) {
-        const auto modelId = GetModelFromInfo(info);
-        if (IsModelDFF(modelId) && CModelInfo::GetModelInfo(modelId)->GetAnimFileIndex() == animModelId)
-            return true;
-    }
-
-    for (auto & channel : ms_channel) {
-        for (const auto& modelId : channel.modelIds) {
-            if (modelId != MODEL_INVALID && IsModelDFF(modelId) &&
-                CModelInfo::GetModelInfo(modelId)->GetAnimFileIndex() == animModelId
-            ) {
+    const auto CheckInList = [=](TList_c<StreamingRequest>& list, std::mutex& mtx) {
+        std::lock_guard g{ mtx };
+        for (auto it = list .GetHead(); it; it = list.GetNext(it)) {
+            if (!IsModelDFF(it->model)) {
+                continue;
+            }
+            if (CModelInfo::GetModelInfo(it->model)->GetAnimFileIndex() == animModelId) {
                 return true;
             }
         }
-    }
-
-    return false;
+        return false;
+    };
+    return CheckInList(s_Pending, s_PendingRqMtx) || CheckInList(s_Finished, s_FinishedRqMtx);
 }
 
-// func not present in Android 1.0
 // 0x409A90
 bool CStreaming::AreTexturesUsedByRequestedModels(int32 txdModelId) {
-    return true; // TODO: Use new request list
-
-    for (auto info = ms_pStartRequestedList->GetNext(); info != ms_pEndRequestedList; info = info->GetNext()) {
-        switch (GetModelType(GetModelFromInfo(info))) {
-        case eModelType::DFF: {
-            if (CModelInfo::GetModelInfo(GetModelFromInfo(info))->m_nTxdIndex == txdModelId)
-                return true;
-            break;
-        }
-        case eModelType::TXD: {
-            if (CTxdStore::GetParentTxdSlot(ModelIdToTXD(GetModelFromInfo(info))) == txdModelId)
-                return true;
-            break;
-        }
-        }
-    }
-
-    for (auto& ch : ms_channel) {
-        for (const auto& model : ch.modelIds) {
-            if (model != MODEL_INVALID) {
-                switch (GetModelType(model)) {
-                case eModelType::DFF: {
-                    if (CModelInfo::GetModelInfo(model)->m_nTxdIndex == txdModelId)
-                        return true;
-                    break;
+    const auto CheckInList = [=](TList_c<StreamingRequest>& list, std::mutex& mtx) {
+        std::lock_guard g{ mtx };
+        for (auto it = list .GetHead(); it; it = list.GetNext(it)) {
+            switch (GetModelType(it->model)) {
+            case eModelType::DFF: {
+                if (CModelInfo::GetModelInfo(it->model)->m_nTxdIndex == txdModelId) {
+                    return true;
                 }
-                case eModelType::TXD: {
-                    if (CTxdStore::GetParentTxdSlot(ModelIdToTXD(model)) == txdModelId)
-                        return true;
-                    break;
+                break;
+            }
+            case eModelType::TXD: {
+                if (CTxdStore::GetParentTxdSlot(ModelIdToTXD(it->model)) == txdModelId) {
+                    return true;
                 }
-                }
+                break;
+            }
             }
         }
-    }
-
-    return false;
+        return false;
+    };
+    return CheckInList(s_Pending, s_PendingRqMtx) || CheckInList(s_Finished, s_FinishedRqMtx);
 }
 
 // 0x407A40
@@ -491,7 +486,6 @@ BufferToObjectStatus CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 
     tRwStreamInitializeData rwStreamInitData = { fileBuffer, bufferSize };
     // Make RW stream from memory
     // TODO: The _ prefix seems to indicate its "private" (maybe), perhaps it was some kind of macro originally?
-    // TODO/BUGFIX: Stream seemingly never closed? (But initialized multiple times)
     RwStream* stream = _rwStreamInitialize(&gRwStream, 0, rwSTREAMMEMORY, rwSTREAMREAD, &rwStreamInitData);
     notsa::ScopeGuard guard([&] { RwStreamClose(&gRwStream, &rwStreamInitData); });
 
@@ -509,7 +503,7 @@ BufferToObjectStatus CStreaming::ConvertBufferToObject(uint8* fileBuffer, int32 
             return MISSING_DEPENDENCIES;
         }
 
-        // DFF loaded yet?
+        // IFP loaded yet?
         if (animFileIndex != -1 && !CAnimManager::ms_aAnimBlocks[animFileIndex].bLoaded) {
             RequestModel(IFPToModelId(animFileIndex), STREAMING_KEEP_IN_MEMORY);
             return MISSING_DEPENDENCIES;
@@ -984,7 +978,7 @@ bool CStreaming::RemoveReferencedTxds(size_t goalMemoryUsageBytes) {
         assert(next);
 
         const auto modelId = GetModelFromInfo(si);
-        if (!IsModelTXD(modelId) || si->IsLoadingScene() || CTxdStore::GetNumRefs(ModelIdToTXD(modelId))) {
+        if (!IsModelTXD(modelId) || si->IsLoadingScene() || CTxdStore::GetNumRefs(ModelIdToTXD(modelId)) || AreTexturesUsedByRequestedModels(ModelIdToTXD(modelId))) {
             continue;
         }
         RemoveModel(modelId);
@@ -1030,19 +1024,15 @@ bool CStreaming::Save() {
 }
 
 bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
+    StreamingRequest *rq{}, *next, *stop;
+    {
+        std::lock_guard g{ s_FinishedRqMtx };
+        next = s_Finished.GetTail();
+        stop = s_Finished.GetHead();
+    }
     size_t nLoaded{}, nFailed{};
-    for (StreamingRequest* rq{}, *next{}; ; rq = next) {
+    for (; rq != stop && (rq = next); ) {
         std::unique_lock lck{ s_FinishedRqMtx };
-
-        if (!rq) {
-            // Reachable in the first iteration only
-            rq = s_Finished.GetTail(); 
-            if (!rq) {
-                return false; // Empty list
-            }
-        } else if (!next) {
-            break; // End of requests
-        }
 
         // Grab next item here because of lifetime issues
         next = s_Finished.GetPrev(rq);
@@ -1055,11 +1045,25 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
             continue;
         }
 
-        // Only now pop
+        //switch (GetModelType(rq->model)) {
+        //
+        //}
+
+        // Now we made sure this model is still needed, to load it now
         s_Finished.RemoveItem(rq); // NOTE: Make sure to `delete rq`!
 
-        // Unlock the mutex again
         lck.unlock();
+
+        if (rq->deleteable) {
+        not_needed:
+            if (si.IsLoaded()) {
+                RemoveModel(rq->model);
+            } else {
+                si.m_nLoadState = LOADSTATE_NOT_LOADED;
+            }
+            delete rq;
+            continue;
+        }
 
         // Check if we still need this model
         if (!si.IsRequested()) {
@@ -1077,16 +1081,14 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
             || RemoveLoadedVehicle() /* no, so try to remove one, and load this in its place */
             || si.IsMissionOrGameRequired() /* failed, lets check if its absolutely mission critical */
         ) {
-            if (!IsModelIPL(rq->model)) { // IPL's dont require any memory themselves
-                MakeSpaceFor(si.GetCdSize() * STREAMING_SECTOR_SIZE); 
-            }
+            //if (!IsModelIPL(rq->model)) { // IPL's dont require any memory themselves
+            //    MakeSpaceFor(si.GetCdSize() * STREAMING_SECTOR_SIZE); 
+            //}
 
             using enum BufferToObjectStatus;
             switch (const auto status = ConvertBufferToObject(rq->data.get(), rq->model)) {
             case NOT_NEEDED_ANYMORE: { // Just forget about it
-                delete rq;
-                si.m_nLoadState = LOADSTATE_NOT_LOADED;
-                break;
+                goto not_needed;
             }
             case MISSING_DEPENDENCIES: // Dependencies requested by the function, so put it back and try loading later
             case GENERIC_FAIL: {       // Something [somehow] went wrong, just try loading again later
@@ -1104,7 +1106,7 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
                     switch (mi->GetModelType()) {
                     case MODEL_INFO_VEHICLE:
                     case MODEL_INFO_PED:
-                        goto skip;
+                        goto finish_loading;
                     }
                     [[fallthrough]];
                 }
@@ -1113,7 +1115,7 @@ bool CStreaming::ProcessFinishedRequests(bool onlyPriority) {
                 case eModelType::TXD:
                     si.AddToList(ms_startLoadedList);
                 }
-            skip:
+            finish_loading:
                 ms_memoryUsedBytes += rq->sizeBytes;
                 nLoaded++;
                 delete rq;
@@ -1330,16 +1332,16 @@ void CStreaming::LoadScene(const CVector& point) {
 
     CVector playerPosition = FindPlayerCoors(0);
 
-    // Can't use a simple `for` loop here, because model is unlinked (thus the iterator is invalidated) when removed.
-    // TODO: Use new request list
     {
-        CStreamingInfo* iter = ms_pEndRequestedList->GetPrev();
-        while (iter != ms_pStartRequestedList) {
-            const auto next = iter->GetPrev();
-            if (!iter->DontRemoveInLoadScene()) {
-                RemoveModel(GetModelFromInfo(iter));
+        std::lock_guard g{ s_PendingRqMtx };
+        for (StreamingRequest *it = s_Pending.GetHead(), *next; it; it = next) {
+            next = s_Pending.GetNext(it);
+
+            if (GetInfo(it->model).DontRemoveInLoadScene()) {
+                continue;
             }
-            iter = next;
+
+            it->Remove();
         }
     }
 
@@ -1642,57 +1644,7 @@ int32 CStreaming::FindMIPedSlotForInterior(int32 randFactor) {
 // Finishes loading a big model by loading the second half of the file
 // residing at `pFileBuffer`.
 void CStreaming::FinishLoadingLargeFile(uint8* pFileBuffer, int32 modelId) {
-    CBaseModelInfo* baseModelInfo = CModelInfo::GetModelInfo(modelId);
-    CStreamingInfo& streamingInfo = GetInfo(modelId);
-    if (streamingInfo.IsLoadingFinishing()/*first half loaded?*/) {
-        const uint32 bufferSize = streamingInfo.GetCdSize() * STREAMING_SECTOR_SIZE;
-        const tRwStreamInitializeData rwStreamInitializationData = { pFileBuffer, bufferSize };
 
-        // TODO/BUGFIX: Stream seemingly never closed? (But initialized multiple times)
-        RwStream* pRwStream = _rwStreamInitialize(&gRwStream, 0, rwSTREAMMEMORY, rwSTREAMREAD, &rwStreamInitializationData);
-
-        bool bLoaded = false;
-        switch (GetModelType(modelId)) {
-        case eModelType::DFF: {
-            CTxdStore::SetCurrentTxd(baseModelInfo->m_nTxdIndex);
-
-            bLoaded = CFileLoader::FinishLoadClumpFile(pRwStream, modelId);
-            if (bLoaded)
-                bLoaded = AddToLoadedVehiclesList(modelId);
-            baseModelInfo->RemoveRef();
-
-            CTxdStore::RemoveRefWithoutDelete(baseModelInfo->m_nTxdIndex);
-
-            const int32 animFileIndex = baseModelInfo->GetAnimFileIndex();
-            if (animFileIndex != -1) {
-                CAnimManager::RemoveAnimBlockRefWithoutDelete(animFileIndex);
-            }
-            break;
-        }
-        case eModelType::TXD: {
-            CTxdStore::AddRef(ModelIdToTXD(modelId));
-            bLoaded = CTxdStore::FinishLoadTxd(ModelIdToTXD(modelId), pRwStream);
-            CTxdStore::RemoveRefWithoutDelete(ModelIdToTXD(modelId));
-            break;
-        }
-        default: {
-            assert(modelId < RESOURCE_ID_COL && "FinishLoadingLargeFile: model id is out of range");
-            break;
-        }
-        }
-        RwStreamClose(pRwStream, &pFileBuffer);
-
-        streamingInfo.m_nLoadState = LOADSTATE_LOADED;
-        ms_memoryUsedBytes += bufferSize;
-        if (!bLoaded) {
-            RemoveModel(modelId);
-            RequestModel(modelId, streamingInfo.GetFlags());
-        }
-    } else {
-        if (IsModelDFF(modelId)) {
-            baseModelInfo->RemoveRef();
-        }
-    }
 }
 
 // 0x40E460
@@ -1827,14 +1779,15 @@ bool CStreaming::ProcessLoadingChannel(int32 chIdx) { // Unused
 // Call `RemoveModel` on all models in the request list except
 // those ones which have either `KEEP_IN_MEMORY` or `PRIORITY_REQUEST` flag(s) set.
 void CStreaming::PurgeRequestList() {
-    // TODO: Use new request list
-    auto info = ms_pEndRequestedList->GetPrev();
-    while (info != ms_pStartRequestedList) {
-        auto prev = info->GetPrev();
-        if (!info->IsRequiredToBeKept() && !info->IsPriorityRequest()) {
-            RemoveModel(GetModelFromInfo(info));
+    std::unique_lock g{ s_PendingRqMtx };
+    for (StreamingRequest* it = s_Pending.GetHead(), *next; it; it = next) {
+        next = s_Pending.GetNext(it);
+
+        if (GetInfo(it->model).DontRemoveInLoadScene()) {
+            continue;
         }
-        info = prev;
+
+        it->Remove();
     }
 }
 
@@ -1948,6 +1901,10 @@ void CStreaming::ReadIniFile() {
             {
                 FrontEndMenuManager.m_PrefsBrightness = strtol(value, nullptr, 10);
             }
+            else if (!_stricmp(attribute, "streaming_buffer"))
+            {
+                ms_streamingBufferSize = strtol(value, nullptr, 10);
+            }
         }
         else
         {
@@ -1985,6 +1942,8 @@ void CStreaming::RemoveAllUnusedModels() {
             streamingInfo.ClearAllFlags();
         }
     }
+
+    MakeSpaceFor(ms_memoryAvailable);
 }
 
 // 0x4093B0
@@ -2131,40 +2090,41 @@ bool CStreaming::RemoveLeastUsedModel(int32 streamingFlags) {
     auto streamingInfo = ms_pEndLoadedList->GetPrev();
     for (; streamingInfo != ms_startLoadedList; streamingInfo = streamingInfo->GetPrev()) {
         const auto modelId = GetModelFromInfo(streamingInfo);
-        if (!streamingInfo->AreAnyFlagsSetOutOf(streamingFlags)) {
-            switch (GetModelType(modelId)) {
-            case eModelType::DFF: {
-                if (!CModelInfo::GetModelInfo(modelId)->m_nRefCount) {
-                    RemoveModel(modelId);
-                    return true;
-                }
-                break;
+        if (streamingInfo->AreAnyFlagsSetOutOf(streamingFlags)) {
+            continue;
+        }
+        switch (GetModelType(modelId)) {
+        case eModelType::DFF: {
+            if (!CModelInfo::GetModelInfo(modelId)->m_nRefCount) {
+                RemoveModel(modelId);
+                return true;
             }
-            case eModelType::TXD: {
-                const auto txdId = ModelIdToTXD(modelId);
-                if (!CTxdStore::GetNumRefs(txdId) && !AreTexturesUsedByRequestedModels(txdId)) {
-                    RemoveModel(modelId);
-                    return true;
-                }
-                break;
+            break;
+        }
+        case eModelType::TXD: {
+            const auto txdId = ModelIdToTXD(modelId);
+            if (!CTxdStore::GetNumRefs(txdId) && !AreTexturesUsedByRequestedModels(txdId)) {
+                RemoveModel(modelId);
+                return true;
             }
-            case eModelType::IFP: {
-                const auto animBlockId = ModelIdToIFP(modelId);
-                if (!CAnimManager::GetNumRefsToAnimBlock(animBlockId) && !AreAnimsUsedByRequestedModels(animBlockId)) {
-                    RemoveModel(modelId);
-                    return true;
-                }
-                break;
+            break;
+        }
+        case eModelType::IFP: {
+            const auto animBlockId = ModelIdToIFP(modelId);
+            if (!CAnimManager::GetNumRefsToAnimBlock(animBlockId) && !AreAnimsUsedByRequestedModels(animBlockId)) {
+                RemoveModel(modelId);
+                return true;
             }
-            case eModelType::SCM: {
-                const auto scmId = ModelIdToSCM(modelId);
-                if (!CTheScripts::StreamedScripts.m_aScripts[scmId].m_nStatus) {
-                    RemoveModel(modelId);
-                    return true;
-                }
-                break;
+            break;
+        }
+        case eModelType::SCM: {
+            const auto scmId = ModelIdToSCM(modelId);
+            if (!CTheScripts::StreamedScripts.m_aScripts[scmId].m_nStatus) {
+                RemoveModel(modelId);
+                return true;
             }
-            }
+            break;
+        }
         }
     }
 
@@ -2304,16 +2264,17 @@ void CStreaming::RemoveModel(int32 modelId) {
         }
         ms_memoryUsedBytes -= STREAMING_SECTOR_SIZE * si.GetCdSize();
     } else if (si.IsRequested()) {
-        // TODO
         // If it's already in the loaded list there's nothing to do [`ProcessFinishedRequests` will remove it]
         // If its in the request list, nows the time to remove it
-        //std::lock_guard g{s_PendingRqMtx};
-        //for (auto it = s_PendingHead; it; it = it->next) {
-        //    if (it->model != (eModelID)modelId) {
-        //        continue;
-        //    }
-        //    
-        //}
+        std::lock_guard g{s_PendingRqMtx};
+        for (auto it = s_Pending.GetHead(); it; it = s_Pending.GetNext(it)) {
+            if (it->model != (eModelID)modelId) {
+                continue;
+            } else {
+                it->deleteable = true;
+                break;
+            }
+        }
     }
 
     si.m_nLoadState = LOADSTATE_NOT_LOADED;
@@ -2331,12 +2292,13 @@ void CStreaming::RemoveTxdModel(int32 modelId) {
 
 // 0x40E120
 void CStreaming::MakeSpaceFor(size_t memoryToCleanInBytes) {
-    while (ms_memoryUsedBytes >= ms_memoryAvailable - memoryToCleanInBytes) {
-        if (!RemoveLeastUsedModel(STREAMING_LOADING_SCENE)) {
-            DeleteRwObjectsBehindCamera(ms_memoryAvailable - memoryToCleanInBytes);
+    assert(ms_memoryAvailable >= memoryToCleanInBytes); // Prevent underflow
+    do {
+        if (ms_memoryUsedBytes <= ms_memoryAvailable - memoryToCleanInBytes) {
             return;
         }
-    }
+    } while (RemoveLeastUsedModel(STREAMING_LOADING_SCENE));
+    DeleteRwObjectsBehindCamera(ms_memoryAvailable - memoryToCleanInBytes);
 }
 
 // 0x40C270
@@ -2440,7 +2402,7 @@ void CStreaming::FlushRequestList() {
     for (StreamingRequest *it = s_Pending.GetHead(), *next; it; it = next) {
         next = s_Pending.GetNext(it); // Have to do it like this, because current iterator is invalidated when `RemoveModel` is called
 
-        RemoveModel(it->model);
+        it->Remove();
     }
 }
 
@@ -2604,7 +2566,7 @@ void CStreaming::Init2() {
     GetInfo(MODEL_TEMPCOL_BODYPART1).m_nLoadState = LOADSTATE_LOADED;
     GetInfo(MODEL_TEMPCOL_BODYPART2).m_nLoadState = LOADSTATE_LOADED;
 
-    ms_streamingBufferSize = 0;
+    //ms_streamingBufferSize = 0;
     ms_disableStreaming = false;
     ms_memoryUsedBytes = 0;
     ms_channelError = -1;
@@ -2653,7 +2615,7 @@ void CStreaming::Init2() {
 
     CTheScripts::StreamedScripts.Initialise();
 
-    // ms_streamingBufferSize is 0 at this point.
+    // ms_streamingBufferSize is 0 [NOTSA: or the value from `stream.ini`] at this point.
     // After calling LoadCdDirectory, ms_streamingBufferSize will contain the maximum number
     // of memory blocks/sectors used for a streaming model, like txd, dff, col, ipl, scm, etc.
     // The size of one streaming sector is STREAMING_BLOCK_SIZE by default.
@@ -2673,7 +2635,9 @@ void CStreaming::Init2() {
     ms_pStreamingBuffer[0] = (uint8*)CMemoryMgr::MallocAlign(maximumModelSizeInBytes, STREAMING_SECTOR_SIZE);
     ms_streamingBufferSize /= 2;
     ms_pStreamingBuffer[1] = &ms_pStreamingBuffer[0][STREAMING_SECTOR_SIZE * ms_streamingBufferSize];
-    ms_memoryAvailable = 50 * 1024 * 1024; // 50 MB
+
+    // NOTSA: The value of this is also read from `stream.ini`, so take that into consideration too!
+    ms_memoryAvailable = std::max(ms_memoryAvailable, 50u * 1024u * 1024u);
     desiredNumVehiclesLoaded = 22;
     ms_rwObjectInstances.Init(12000);
     ms_bIsInitialised = true;
@@ -3560,4 +3524,14 @@ void CStreaming::IHaveUsedStreamingMemory() {
 // 0x407BE0
 void CStreaming::ImGonnaUseStreamingMemory() {
     CMemoryMgr::PushMemId(MEM_STREAMING);
+}
+
+size_t CStreaming::GetPendingStreamingRequestsCount() {
+    std::lock_guard g{ s_PendingRqMtx };
+    return s_Pending.GetNumItems();
+}
+
+size_t CStreaming::GetFinishedStreamingRequestsCount() {
+    std::lock_guard g1{ s_FinishedRqMtx };
+    return s_Finished.GetNumItems();
 }

@@ -79,8 +79,9 @@ void DrawListSizes() {
             n++;
         return n;
     };
-    Text("Req. list size: %u", GetListSize(CStreaming::ms_pStartRequestedList, CStreaming::ms_pEndRequestedList));
-    Text("Loaded list size: %u", GetListSize(CStreaming::ms_startLoadedList, CStreaming::ms_pEndLoadedList));
+    Text("#Pending: %u", CStreaming::GetPendingStreamingRequestsCount());
+    Text("#Finished: %u", CStreaming::GetFinishedStreamingRequestsCount());
+    Text("#Loaded: %u", GetListSize(CStreaming::ms_startLoadedList, CStreaming::ms_pEndLoadedList));
 }
 
 void CStreamingDebugModule::RenderWindow() {
@@ -121,8 +122,6 @@ void CStreamingDebugModule::RenderWindow() {
 
     DrawListSizes();
     DrawChannelStates();
-
-    Text("Loading big model: %i", (int32)CStreaming::ms_bLoadingBigModel);
 }
 
 void CStreamingDebugModule::RenderMenuEntry() {

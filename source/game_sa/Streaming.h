@@ -401,4 +401,6 @@ public:
     static ptrdiff_t GetModelFromInfo(const CStreamingInfo* info) { return info - CStreaming::ms_aInfoForModel; }
     static auto GetLoadedPeds() { return ms_pedsLoaded | rng::views::take(ms_numPedsLoaded); }
     static auto GetWholeBufferSize() { return ms_streamingBufferSize * 2; }
+    static size_t GetPendingStreamingRequestsCount();
+    static size_t GetFinishedStreamingRequestsCount();
 };
