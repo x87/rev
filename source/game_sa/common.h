@@ -147,6 +147,19 @@ constexpr float DegreesToRadians(float angleInDegrees) {
     return angleInDegrees * PI / 180.0F;
 }
 
+template<typename T>
+struct WeightedValue {
+    T     v;
+    float w;
+};
+
+template<typename T>
+T multiply_weighted(std::initializer_list<WeightedValue<T>> values) {
+    return std::accumulate(values.begin(), values.end(), T{}, [](T acc, WeightedValue<T> vw) {
+        return acc + (T)((float)vw.v * vw.w);
+    });
+}
+
 // Converts radians to degrees
 // 57.295826
 constexpr float RadiansToDegrees(float angleInRadians) {
