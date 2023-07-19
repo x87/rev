@@ -13,7 +13,7 @@ void CClothesBuilder::InjectHooks() {
 
     RH_ScopedInstall(LoadCdDirectory, 0x5A4190);
     RH_ScopedInstall(RequestGeometry, 0x5A41C0);
-    RH_ScopedInstall(RequestTexture, 0x5A4220); 
+    RH_ScopedInstall(RequestTexture, 0x5A4220);
     //RH_ScopedInstall(nullptr, 0x5A42B0, { .reversed = false }); 
     //RH_ScopedInstall(nullptr, 0x5A4380, { .reversed = false }); AtomicInstanceCB
     //RH_ScopedInstall(nullptr, 0x5A43A0, { .reversed = false });
@@ -75,7 +75,7 @@ int32 CClothesBuilder::RequestTexture(uint32 txdNameKey) {
 
     uint32 offset, size;
     VERIFY(playerImg.FindItem(CKeyGen::AppendStringToKey(txdNameKey, ".TXD"), offset, size));
-    CStreaming::RequestFile(TXDToModelId(defaultTxdIdx), offset, size, CClothes::ms_clothesImageId, STREAMING_PRIORITY_REQUEST | STREAMING_GAME_REQUIRED);
+    CStreaming::RequestFile(TXDToModelId(defaultTxd), offset, size, CClothes::ms_clothesImageId, STREAMING_PRIORITY_REQUEST | STREAMING_GAME_REQUIRED);
 
     return defaultTxd;
 }
