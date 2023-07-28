@@ -1,14 +1,14 @@
 #pragma once
 
 #include "Base.h"
-
+#include "FurnitureSubGroup_c.h"
 #include "List_c.h"
 
 class Furniture_c;
 
 class FurnitureGroup_c {
 public:
-    List_c m_subGroupsList;
+    TList_c<FurnitureSubGroup_c> m_subGroupsList{};
 
 public:
     static void InjectHooks();
@@ -18,7 +18,7 @@ public:
 
     int32 Init();
     int32 Exit();
-    bool AddSubGroup(int32 subgroupId, int32 minWidth, int32 minDepth, int32 maxWidth, int32 maxDepth, uint8 canPlaceInFrontOfWindow, bool isTall, bool canSteal);
+    bool AddSubGroup(int32 subGroupId, int32 minW, int32 minD, int32 maxW, int32 maxD, bool onWindow, bool isTall, bool isStealable);
     Furniture_c* GetFurniture(int32 subGroupId, int16, uint8);
     int32 GetRandomId(int32 subgroupId, uint8 a2);
     bool AddFurniture(int32 subgroupId, uint16 modelId, int16 id, uint8 wealthMin, uint8 wealthMax, uint8 maxAng);

@@ -8,15 +8,16 @@ class Furniture_c;
 
 class FurnitureSubGroup_c : public ListItem_c {
 public:
-    int32   m_nSubgroupId;
-    List_c  m_Furnitures;
-    bool    m_bCanPlaceInFrontOfWindow;
-    bool    m_bIsTall;
-    bool    m_bCanSteal;
-
+    int32  m_id{};
+    List_c m_furnitureList{};
+    bool   m_onWindowTile{};
+    bool   m_isTall{};
+    bool   m_isStealable{};
+    
 public:
     static void InjectHooks();
 
+    FurnitureSubGroup_c(int32 id, bool onWindow, bool isTall, bool isStealable);
     FurnitureSubGroup_c() = default;  // 0x590E20
     ~FurnitureSubGroup_c() = default; // 0x590E70
 

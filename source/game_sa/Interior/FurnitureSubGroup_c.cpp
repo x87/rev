@@ -10,6 +10,14 @@ void FurnitureSubGroup_c::InjectHooks() {
     RH_ScopedInstall(AddFurniture, 0x5C00C0, { .reversed = false });
 }
 
+FurnitureSubGroup_c::FurnitureSubGroup_c(int32 id, bool onWindow, bool isTall, bool isStealable) :
+    m_id{id},
+    m_onWindowTile{onWindow},
+    m_isTall{isTall},
+    m_isStealable{isStealable}
+{
+}
+
 // 0x5C00C0
 bool FurnitureSubGroup_c::AddFurniture(uint16 modelId, int16 id, uint8 wealthMin, uint8 wealthMax, uint8 maxAng) {
     return plugin::CallMethodAndReturn<bool, 0x5C00C0, FurnitureSubGroup_c*, uint16, int16, uint8, uint8, uint8>(this, modelId, id, wealthMin, wealthMax, maxAng);

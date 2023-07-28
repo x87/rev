@@ -60,10 +60,10 @@ public:
     ListItem_c* GetTail();
 
     // Get next item in a list
-    ListItem_c* GetNext(ListItem_c* item);
+    static ListItem_c* GetNext(ListItem_c* item);
 
     // Get previous item
-    ListItem_c* GetPrev(ListItem_c* item);
+    static ListItem_c* GetPrev(ListItem_c* item);
 
     // Get N-th item from list head/tail
     ListItem_c* GetItemOffset(bool bFromHead, int32 iOffset);
@@ -73,35 +73,65 @@ public:
  * Double linked list template wrapper
  * (not an original game class name)
  */
-template <typename ItemType> class TList_c : public List_c {
+template <typename T>
+class TList_c : public List_c {
 public:
-    ItemType* GetHead() {
-        return static_cast<ItemType*>(List_c::GetHead());
+    class Iterator {
+        using ListT             = TList_c<T>;
+    public:
+        using iterator_category = std::bidirectional_iterator_tag;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = T;
+        using pointer           = T*;
+        using reference         = T&;
+
+        Iterator(pointer ptr) : m_ptr{ptr} {}
+
+        reference operator*() const { return *m_ptr; }
+        pointer operator->() { return m_ptr; }
+        Iterator& operator++() { m_ptr = m_ptr->m_pNext; return *this; }
+        Iterator operator++(int) { Iterator tmp = *this; ++(*this); return tmp; }
+        friend bool operator== (const Iterator& a, const Iterator& b) { return a.m_ptr == b.m_ptr; };
+        friend bool operator!= (const Iterator& a, const Iterator& b) { return a.m_ptr != b.m_ptr; };
+
+    private:
+        pointer m_ptr;
+    };
+public:
+    T* GetHead() {
+        return static_cast<T*>(List_c::GetHead());
     }
 
-    ItemType* GetTail() {
-        return static_cast<ItemType*>(List_c::GetTail());
+    T* GetTail() {
+        return static_cast<T*>(List_c::GetTail());
     }
 
-    ItemType* RemoveHead() {
-        return static_cast<ItemType*>(List_c::RemoveHead());
+    T* RemoveHead() {
+        return static_cast<T*>(List_c::RemoveHead());
     }
 
-    ItemType* RemoveTail() {
-        return static_cast<ItemType*>(List_c::RemoveTail());
+    T* RemoveTail() {
+        return static_cast<T*>(List_c::RemoveTail());
     }
 
-    ItemType* GetNext(ItemType* item) {
-        return static_cast<ItemType*>(List_c::GetNext(item));
+    T* GetNext(T* item) {
+        return static_cast<T*>(List_c::GetNext(item));
     }
 
-    ItemType* GetPrev(ItemType* item) {
-        return static_cast<ItemType*>(List_c::GetPrev(item));
+    T* GetPrev(T* item) {
+        return static_cast<T*>(List_c::GetPrev(item));
     }
 
-    ItemType* GetItemOffset(bool bFromHead, int32 iOffset) {
-        return static_cast<ItemType*>(List_c::GetItemOffset(bFromHead, iOffset));
+    T* GetItemOffset(bool bFromHead, int32 iOffset) {
+        return static_cast<T*>(List_c::GetItemOffset(bFromHead, iOffset));
+    }
+
+    // Iterate over the list [NOTSA]
+    template<typename Fn>
+    void ForEach(Fn fn) {
+        for (auto it = GetHead(); it; it = GetNext(it)) {
+            std::invoke(fn, *it);
+        }
     }
 };
-
 VALIDATE_SIZE(List_c, 0xC);
