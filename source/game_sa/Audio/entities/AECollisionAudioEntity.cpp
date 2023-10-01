@@ -82,14 +82,15 @@ void CAECollisionAudioEntity::AddCollisionSoundToList(
 }
 
 // 0x4DA830
-void CAECollisionAudioEntity::GetCollisionSoundStatus(CEntity* entity1, CEntity* entity2, eSurfaceType surf1, eSurfaceType surf2, int32& outIndex) {
-    const auto foundEntry = rng::find_if(m_Entries, [entity1, entity2](tCollisionAudioEntry& entry) {
-        return entry.m_Entity1 == entity1 && entry.m_Entity2 == entity2
-            || entry.m_Entity1 == entity2 && entry.m_Entity2 == entity1;
-    });
-
-    // 300 is possibly unintended.
-    outIndex = foundEntry != m_Entries.end() ? std::distance(m_Entries.begin(), foundEntry) : 300;
+eCollisionAudioEntryStatus CAECollisionAudioEntity::GetCollisionSoundStatus(CEntity* entity1, CEntity* entity2, eSurfaceType surf1, eSurfaceType surf2, int32& outIndex) {
+    for (auto&& [i, v] : notsa::enumerate(m_Entries)) {
+        if (v.m_Entity1 != entity1 && v.m_Entity2 != entity2 && v.m_Entity1 != entity2 && v.m_Entity2 != entity1) {
+            continue;
+        }
+        outIndex = (int32)i;
+        return v.m_nStatus;
+    }
+    NOTSA_UNREACHABLE();
 }
 
 // 0x4DB150
