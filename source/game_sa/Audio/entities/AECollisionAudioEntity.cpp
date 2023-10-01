@@ -53,28 +53,32 @@ void CAECollisionAudioEntity::Reset() {
 }
 
 // 0x4DAAC0
-void CAECollisionAudioEntity::AddCollisionSoundToList(CEntity* entity1, CEntity* entity2, eSurfaceType surf1, eSurfaceType surf2, CAESound* sound,
-    eCollisionAudioEntryStatus status)
+void CAECollisionAudioEntity::AddCollisionSoundToList(
+    CEntity* entity1,
+    CEntity* entity2,
+    eSurfaceType surf1,
+    eSurfaceType surf2,
+    CAESound* sound,
+    eCollisionAudioEntryStatus status
+)
 {
     // Find an entry with no sound.
-    const auto newEntry = rng::find_if(m_Entries, [](tCollisionAudioEntry& entry) {
-        return !entry.m_Sound;
-    });
-
-    if (newEntry == m_Entries.end()) {
-        // Game tries to access m_Entries[300] in this case.
-        NOTSA_UNREACHABLE();
+    const auto e = rng::find_if_not(m_Entries, &tCollisionAudioEntry::m_Sound);
+    if (e == m_Entries.end()) {
+        return;
     }
 
-    // ? check
-    newEntry->m_Entity1 = entity1;
-    newEntry->m_Entity2 = entity2;
-    newEntry->m_nSurface1 = surf1;
-    newEntry->m_nSurface2 = surf2;
-    newEntry->m_Sound = sound;
-    newEntry->m_nStatus = status;
-    newEntry->m_nTime = status == COL_AUDIO_ENTRY_STATUS_2 ? CTimer::GetTimeInMS() + 100 : 0;
-    ++m_nActiveCollisionSounds;
+    e->m_Entity1    = entity1;
+    e->m_Entity2    = entity2;
+
+    e->m_nSurface1  = surf1;
+    e->m_nSurface2  = surf2;
+
+    e->m_Sound      = sound;
+    e->m_nStatus    = status;
+    e->m_nTime      = status == COL_AUDIO_ENTRY_STATUS_2 ? CTimer::GetTimeInMS() + 100 : 0;
+
+    m_nActiveCollisionSounds++;
 }
 
 // 0x4DA830
