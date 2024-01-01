@@ -10,13 +10,13 @@
 #include "CommandParser/Parser.hpp"
 
 using namespace notsa;
-using namespace notsa::script;
+using namespace notsa::scm;
 /*!
 * Various object commands
 */
 
 namespace Object {
-CObject& CreateObject(CRunningScript& S, script::Model model, CVector posn) {
+CObject& CreateObject(CRunningScript& S, scm::Model model, CVector posn) {
     const auto mi = CModelInfo::GetModelInfo(model);
     auto* object = CObject::Create(model, false);
     CWorld::PutToGroundIfTooLow(posn);
@@ -96,22 +96,22 @@ void SetObjectCollision(CObject& object, bool enable) {
     object.m_bUsesCollision = enable;
 }
 
-bool DoesObjectHaveThisModel(CObject& object, script::Model model) {
+bool DoesObjectHaveThisModel(CObject& object, scm::Model model) {
     return object.m_nModelIndex == model;
 }
 } // namespace Object
 
 namespace Model {
-void LoadModel(CRunningScript* S, script::Model model) {
+void LoadModel(CRunningScript* S, scm::Model model) {
     CStreaming::RequestModel(model, STREAMING_MISSION_REQUIRED | STREAMING_KEEP_IN_MEMORY);
     CTheScripts::ScriptResourceManager.AddToResourceManager(model, RESOURCE_TYPE_MODEL_OR_SPECIAL_CHAR, S);
 }
 
-bool HasModelLoaded(script::Model model) {
+bool HasModelLoaded(scm::Model model) {
     return CStreaming::IsModelLoaded(model);
 }
 
-void MarkModelNotNeeded(CRunningScript* S, script::Model model) {
+void MarkModelNotNeeded(CRunningScript* S, scm::Model model) {
     if (CTheScripts::ScriptResourceManager.RemoveFromResourceManager(model, RESOURCE_TYPE_MODEL_OR_SPECIAL_CHAR, S)) {
         CStreaming::SetMissionDoesntRequireModel(model);
     }
@@ -180,7 +180,7 @@ auto SetObjectAnimCurrentTime(CObject& obj, const char* animName, float progress
 }
 } // namespace Animation
 
-void notsa::script::commands::object::RegisterHandlers() {
+void notsa::scm::commands::object::RegisterHandlers() {
     using namespace Object;
     using namespace Model;
     using namespace Fx;

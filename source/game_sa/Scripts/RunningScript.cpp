@@ -31,7 +31,7 @@ static notsa::log_ptr logger;
 // https://library.sannybuilder.com/#/sa
 
 //! Holds all custom command handlers (or null for commands with no custom handler)
-static inline std::array<notsa::script::CommandHandlerFunction, (size_t)(COMMAND_HIGHEST_ID_TO_HOOK) + 1> s_CustomCommandHandlerTable{};
+static inline std::array<notsa::scm::CommandHandlerFunction, (size_t)(COMMAND_HIGHEST_ID_TO_HOOK) + 1> s_CustomCommandHandlerTable{};
 
 void CRunningScript::InjectHooks() {
     logger = NOTSA_MAKE_LOGGER("script");
@@ -88,7 +88,7 @@ void CRunningScript::InjectCustomCommandHooks() {
     // Uncommenting any call will prevent it from being hooked, so
     // feel free to do so when debugging (Just don't forget to undo the changes!)
 
-    using namespace notsa::script::commands;
+    using namespace notsa::scm::commands;
 
     basic::RegisterHandlers();
     camera::RegisterHandlers();
@@ -103,7 +103,7 @@ void CRunningScript::InjectCustomCommandHooks() {
     pad::RegisterHandlers();
     ped::RegisterHandlers();
     player::RegisterHandlers();
-    script::RegisterHandlers();
+    scm::RegisterHandlers();
     sequence::RegisterHandlers();
     text::RegisterHandlers();
     unused::RegisterHandlers();
@@ -916,7 +916,7 @@ OpcodeResult CRunningScript::ProcessOneCommand() {
         };
     } op = { CTheScripts::Read2BytesFromScript(m_IP) };
 
-    SPDLOG_LOGGER_TRACE(logger, "[{}][IP: {:#x} + {:#x}]: {} [{:#x}]", m_szName, LOG_PTR(m_pBaseIP), LOG_PTR(m_IP - m_pBaseIP), notsa::script::GetScriptCommandName((eScriptCommands)op.command), (size_t)op.command);
+    SPDLOG_LOGGER_TRACE(logger, "[{}][IP: {:#x} + {:#x}]: {} [{:#x}]", m_szName, LOG_PTR(m_pBaseIP), LOG_PTR(m_IP - m_pBaseIP), notsa::scm::GetScriptCommandName((eScriptCommands)op.command), (size_t)op.command);
     
     m_bNotFlag = op.notFlag;
 
@@ -972,6 +972,6 @@ void CRunningScript::HighlightImportantAngledArea(uint32 id, CVector2D a, CVecto
     NOTSA_UNREACHABLE(); // Fuck this, we dont need it!
 }
 
-notsa::script::CommandHandlerFunction& CRunningScript::CustomCommandHandlerOf(eScriptCommands command) {
+notsa::scm::CommandHandlerFunction& CRunningScript::CustomCommandHandlerOf(eScriptCommands command) {
     return s_CustomCommandHandlerTable[(size_t)(command)];
 }

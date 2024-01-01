@@ -1,7 +1,7 @@
 #pragma once
 
 namespace notsa {
-namespace script {
+namespace scm {
 namespace commands {
 namespace basic { void RegisterHandlers(); };
 namespace camera { void RegisterHandlers(); };
@@ -16,7 +16,7 @@ namespace object { void RegisterHandlers(); };
 namespace pad { void RegisterHandlers(); };
 namespace ped { void RegisterHandlers(); };
 namespace player { void RegisterHandlers(); };
-namespace script { void RegisterHandlers(); };
+namespace scm { void RegisterHandlers(); };
 namespace sequence { void RegisterHandlers(); };
 namespace text { void RegisterHandlers(); };
 namespace unused { void RegisterHandlers(); };
@@ -24,4 +24,4 @@ namespace utility { void RegisterHandlers(); };
 namespace vehicle { void RegisterHandlers(); };
 }; // namespace commands
 }; // namespace notsa
-}; // namespace script
+}; // namespace scm

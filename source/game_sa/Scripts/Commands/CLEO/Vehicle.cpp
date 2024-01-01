@@ -31,7 +31,7 @@ void SetCarEngineOn(CVehicle& vehicle, bool state) {
 }
 
 
-void notsa::script::commands::cleo::vehicle::RegisterHandlers() {
+void notsa::scm::commands::cleo::vehicle::RegisterHandlers() {
 #if 0
     REGISTER_COMMAND_HANDLER(COMMAND_GET_CAR_NUMBER_OF_GEARS, GetCarNumberOfGears);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_CAR_CURRENT_GEAR, GetCarNumberOfGears);

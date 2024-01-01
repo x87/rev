@@ -28,7 +28,7 @@
 #include <TaskComplexEnterCarAsDriver.h>
 #include <TaskSimpleCarSetPedOut.h>
 
-using namespace notsa::script;
+using namespace notsa::scm;
 /*!
 * Various character (ped) commands
 */
@@ -1018,7 +1018,7 @@ auto IsCharInWater(CPed* ped) {
 // GET_CHAR_WEAPON_IN_SLOT
 auto GetCharWeaponInSlot(CPed& ped, eWeaponSlot slut) {
     const auto& wep = ped.GetWeaponInSlot(slut);
-    return notsa::script::return_multiple(wep.m_Type, wep.m_TotalAmmo, CPickups::ModelForWeapon(wep.m_Type));
+    return notsa::scm::return_multiple(wep.m_Type, wep.m_TotalAmmo, CPickups::ModelForWeapon(wep.m_Type));
 }
 
 // GET_OFFSET_FROM_CHAR_IN_WORLD_COORDS
@@ -1472,7 +1472,7 @@ CVehicle* StoreCarCharIsAttachedToNoSave(CPed* ped) {
     return ped->m_pAttachedTo->AsVehicle();
 }
 
-void notsa::script::commands::character::RegisterHandlers() {
+void notsa::scm::commands::character::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_PROOFS, SetCharProofs);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_VELOCITY, SetCharVelocity);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_CHAR_VELOCITY, GetCharVelocity);

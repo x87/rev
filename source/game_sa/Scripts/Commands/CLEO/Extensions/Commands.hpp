@@ -1,7 +1,7 @@
 #pragma once
 
 namespace notsa {
-namespace script {
+namespace scm {
 namespace commands {
 namespace cleo {
 namespace extensions {
@@ -12,6 +12,6 @@ namespace imgui { void RegisterHandlers(); };
 namespace intoperations { void RegisterHandlers(); };
 }; // namespace extensions
 }; // namespace notsa
-}; // namespace script
+}; // namespace scm
 }; // namespace commands
 }; // namespace cleo

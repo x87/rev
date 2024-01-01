@@ -86,5 +86,5 @@ OpcodeResult CRunningScript::ProcessCommand<COMMAND_SET_PLAY_3D_AUDIO_STREAM_AT_
 }
 */
 
-void notsa::script::commands::cleo::audiostream::RegisterHandlers() {
+void notsa::scm::commands::cleo::audiostream::RegisterHandlers() {
 }

@@ -7,5 +7,5 @@
 * Comparasion commands
 */
 
-void notsa::script::commands::comparasion::RegisterHandlers() {
+void notsa::scm::commands::comparasion::RegisterHandlers() {
 }

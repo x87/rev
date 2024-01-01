@@ -205,7 +205,7 @@ auto Nop() {
     /* Hello! How are you? */
 }
 
-void notsa::script::commands::basic::RegisterHandlers() {
+void notsa::scm::commands::basic::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_IS_INT_VAR_GREATER_OR_EQUAL_TO_NUMBER, IsGreaterEqual<int32>);
     REGISTER_COMMAND_HANDLER(COMMAND_IS_INT_LVAR_GREATER_OR_EQUAL_TO_INT_LVAR, IsGreaterEqual<int32>);
     REGISTER_COMMAND_HANDLER(COMMAND_IS_CONSTANT_GREATER_OR_EQUAL_TO_INT_VAR, IsGreaterEqual<int32>);

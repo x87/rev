@@ -8,7 +8,7 @@
 class CRunningScript;
 
 namespace notsa {
-namespace script {
+namespace scm {
 namespace detail {
 template<typename T_FnRet, typename... T_FnArgs, typename... T_CollectedArgs>
 inline OpcodeResult CollectArgsAndCall(CRunningScript* S, eScriptCommands command, T_FnRet(*CommandFn)(T_FnArgs...), T_CollectedArgs&&... args) {
@@ -44,7 +44,7 @@ inline OpcodeResult CollectArgsAndCall(CRunningScript* S, eScriptCommands comman
         if constexpr (std::is_same_v<T_ToRead, eScriptCommands>) { // Special case for reading the current script comamnd
             return ContinueWithArg(command);
         } else {
-            return ContinueWithArg(notsa::script::Read<T_ToRead>(S)); // Read next parameter and continue
+            return ContinueWithArg(notsa::scm::Read<T_ToRead>(S)); // Read next parameter and continue
         }
     
         // Don't remove this, we might need it!
@@ -59,7 +59,6 @@ inline OpcodeResult CollectArgsAndCall(CRunningScript* S, eScriptCommands comman
     }
 }
 
-//! That is, ones that aren't used anywhere.
 //! If this ever gets called, that means that the command is used after all, and shouldn't be hooked as unimplemented.
 inline auto NotImplemented(CRunningScript& S, eScriptCommands cmd) {
     DEV_LOG("[{}][IP: {:#x} + {:#x}]: Unimplemented command has been called! [ID: {:04X}; Name: {}]", S.m_szName, LOG_PTR(S.m_pBaseIP), LOG_PTR(S.m_IP - S.m_pBaseIP), (unsigned)(cmd), GetScriptCommandName(cmd));
@@ -82,7 +81,7 @@ inline void AddCommandHandler() {
     entry = &CommandParser<Command, CommandFn>; // Register handler
 }
 }; // namespace detail
-}; // namespace script
+}; // namespace scm
 }; // namespace notsa
 
 template<eScriptCommands Command>
@@ -103,11 +102,11 @@ constexpr inline auto AddressOfFunction(T fn) {
 
 //! Register a custom command handler
 #define REGISTER_COMMAND_HANDLER(cmd, fn) \
-    ::notsa::script::detail::AddCommandHandler<cmd, ::notsa::detail::AddressOfFunction(fn)>()
+    ::notsa::scm::detail::AddCommandHandler<cmd, ::notsa::detail::AddressOfFunction(fn)>()
 
 //! Register a command handler for an unimplemented command (That is, a command that wasn't implemented in the game either)
 #define REGISTER_COMMAND_UNIMPLEMENTED(cmd) \
-    REGISTER_COMMAND_HANDLER(cmd, ::notsa::script::detail::NotImplemented)
+    REGISTER_COMMAND_HANDLER(cmd, ::notsa::scm::detail::NotImplemented)
 
 #ifdef IMPLEMENT_UNSUPPORTED_OPCODES
 //! Register a custom command handler for an unimplmented command. (Won't be implemented if IMPLEMENT_UNSUPPORTED_OPCODES is not defined.)

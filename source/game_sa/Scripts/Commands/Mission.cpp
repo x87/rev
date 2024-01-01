@@ -73,7 +73,7 @@ void LaunchMission(uint32 label) {
     CTheScripts::StartNewScript(&CTheScripts::ScriptSpace[label]);
 }
 
-void notsa::script::commands::mission::RegisterHandlers() {
+void notsa::scm::commands::mission::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_LOAD_AND_LAUNCH_MISSION_INTERNAL, LoadAndLaunchMissionInternal);
     REGISTER_COMMAND_HANDLER(COMMAND_SCRIPT_NAME, ScriptName);
     REGISTER_COMMAND_HANDLER(COMMAND_START_SCRIPT_FIRE, StartScriptFire);

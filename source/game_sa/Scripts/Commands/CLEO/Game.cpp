@@ -12,6 +12,6 @@ bool IsGameVersionOriginal() {
     return false;
 }
 
-void notsa::script::commands::cleo::game::RegisterHandlers() {
+void notsa::scm::commands::cleo::game::RegisterHandlers() {
     //REGISTER_COMMAND_HANDLER(COMMAND_IS_GAME_VERSION_ORIGINAL, IsGameVersionOriginal);
 }

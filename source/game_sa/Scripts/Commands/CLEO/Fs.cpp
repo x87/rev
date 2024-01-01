@@ -51,5 +51,5 @@ OpcodeResult CRunningScript::ProcessCommand<COMMAND_DOES_FILE_EXIST>() { // 0x0A
 }
 */
 
-void notsa::script::commands::cleo::fs::RegisterHandlers() {
+void notsa::scm::commands::cleo::fs::RegisterHandlers() {
 }

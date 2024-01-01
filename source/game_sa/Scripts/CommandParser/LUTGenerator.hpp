@@ -68,6 +68,6 @@ static constexpr auto GenerateLUT() {
     return lut;
 }
 
-}; // namespace script
+}; // namespace scm
 }; // namespace notsa 
 #endif

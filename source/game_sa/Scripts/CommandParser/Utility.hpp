@@ -5,7 +5,7 @@
 #include "Pools.h"
 
 namespace notsa {
-namespace script {
+namespace scm {
 namespace detail {
 template<typename T>
 auto& PoolOf() = delete;

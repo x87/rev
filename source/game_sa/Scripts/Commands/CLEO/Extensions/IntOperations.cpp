@@ -53,7 +53,7 @@ auto BitwiseModThingByThing(uint32& a, uint32 b) {
     a %= b; 
 }
 
-void notsa::script::commands::cleo::extensions::intoperations::RegisterHandlers() {
+void notsa::scm::commands::cleo::extensions::intoperations::RegisterHandlers() {
     /*
     REGISTER_COMMAND_HANDLER(COMMAND_BIT_AND, BitAnd);
     REGISTER_COMMAND_HANDLER(COMMAND_BITWISE_AND_THING_WITH_THING, BitwiseAndThingWithThing);

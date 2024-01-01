@@ -12,7 +12,7 @@
 #include "Scripted2dEffects.h"
 
 namespace notsa {
-namespace script {
+namespace scm {
 
 // eModelID wrapper that is read either from a static
 // int32 value or UsedObjectArray.
@@ -62,7 +62,7 @@ inline auto IsActive(uint32 idx) -> bool { return CScripted2dEffects::ms_activat
 template<typename T>
 inline constexpr auto is_script_thing_v = requires(uint32 index) { GetAt<T>(index); };
 static_assert(is_script_thing_v<C2dEffect> && !is_script_thing_v<int>);
-}; // namespace scriptthing
+}; // namespace scmthing
 };
 
 namespace detail {
@@ -264,7 +264,7 @@ inline T Read(CRunningScript* S) {
         }
 
         return &detail::scriptthing::GetAt<Y>(index);
-    } else if constexpr (std::is_same_v<T, script::Model>) {
+    } else if constexpr (std::is_same_v<T, scm::Model>) {
         const auto value = Read<int32>(S);
         if (value < 0) {
             // we get the model from UsedObjectArray.
@@ -280,5 +280,5 @@ inline T Read(CRunningScript* S) {
     // that you shouldn't have (Like `CPed`, `CVehicle`, or such)
 }
 
-}; // namespace script
+}; // namespace scm
 }; // namespace notsa

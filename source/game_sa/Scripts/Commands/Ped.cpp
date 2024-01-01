@@ -24,7 +24,7 @@ void SetCharGetOutUpsideDownCar(CPed& ped, bool enable) {
     ped.bGetOutUpsideDownCar = enable;
 }
 
-void notsa::script::commands::ped::RegisterHandlers() {
+void notsa::scm::commands::ped::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_SET_DEATH_WEAPONS_PERSIST, SetDeathWeaponPersist);
     REGISTER_COMMAND_HANDLER(COMMAND_IGNORE_HEIGHT_DIFFERENCE_FOLLOWING_NODES, IgnoreHeightDifferenceFollowingNodes);
     REGISTER_COMMAND_HANDLER(COMMAND_SHUT_ALL_CHARS_UP, ShutAllCharsUp);

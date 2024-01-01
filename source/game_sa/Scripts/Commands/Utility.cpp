@@ -7,4 +7,4 @@
 * Various utility commands
 */
 
-void notsa::script::commands::utility::RegisterHandlers() {}
+void notsa::scm::commands::utility::RegisterHandlers() {}

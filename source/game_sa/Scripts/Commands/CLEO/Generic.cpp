@@ -45,5 +45,5 @@ OpcodeResult CRunningScript::ProcessCommand<COMMAND_GET_CLEO_SHARED_VAR>() { // 
 }
 */
 
-void notsa::script::commands::cleo::generic::RegisterHandlers() {
+void notsa::scm::commands::cleo::generic::RegisterHandlers() {
 }

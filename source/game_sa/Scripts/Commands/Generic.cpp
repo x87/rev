@@ -13,5 +13,5 @@
 #include "FireManager.h"
 #include "CommandParser/Parser.hpp"
 
-void notsa::script::commands::generic::RegisterHandlers() {
+void notsa::scm::commands::generic::RegisterHandlers() {
 }

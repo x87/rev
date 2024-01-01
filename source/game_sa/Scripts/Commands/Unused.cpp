@@ -12,7 +12,7 @@
 void NoOp() {}
 
 
-void notsa::script::commands::unused::RegisterHandlers() {
+void notsa::scm::commands::unused::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_CASE, NoOp);
     REGISTER_COMMAND_HANDLER(COMMAND_BREAK, NoOp);
     REGISTER_COMMAND_HANDLER(COMMAND_SWITCH, NoOp);

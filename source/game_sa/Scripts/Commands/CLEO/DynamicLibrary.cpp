@@ -27,5 +27,5 @@ OpcodeResult CRunningScript::ProcessCommand<COMMAND_GET_DYNAMIC_LIBRARY_PROCEDUR
 }
 */
 
-void notsa::script::commands::cleo::dynamiclibrary::RegisterHandlers() {
+void notsa::scm::commands::cleo::dynamiclibrary::RegisterHandlers() {
 }

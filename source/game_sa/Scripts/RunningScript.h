@@ -262,7 +262,7 @@ public:
     }
 
     //! Return the custom command handler of a function (or null) as a reference
-    static notsa::script::CommandHandlerFunction& CustomCommandHandlerOf(eScriptCommands command); // Returning a ref here for convinience (instead of having to make a `Set` function too)
+    static notsa::scm::CommandHandlerFunction& CustomCommandHandlerOf(eScriptCommands command); // Returning a ref here for convinience (instead of having to make a `Set` function too)
 };
 
 VALIDATE_SIZE(CRunningScript, 0xE0);

@@ -41,5 +41,5 @@ OpcodeResult CRunningScript::ProcessCommand<COMMAND_TERMINATE_ALL_CUSTOM_SCRIPTS
 }
 */
 
-void notsa::script::commands::cleo::script::RegisterHandlers() {
+void notsa::scm::commands::cleo::script::RegisterHandlers() {
 }

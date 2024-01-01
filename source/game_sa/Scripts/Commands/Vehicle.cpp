@@ -9,7 +9,7 @@
 #include "CarGenerator.h"
 #include "TheCarGenerators.h"
 #include "CommandParser/Parser.hpp"
-using namespace notsa::script;
+using namespace notsa::scm;
 
 /*!
 * Various vehicle commands
@@ -93,7 +93,7 @@ void DisableHeliAudio(CVehicle& vehicle, bool enable) {
     }
 }
 
-void notsa::script::commands::vehicle::RegisterHandlers() {
+void notsa::scm::commands::vehicle::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_CLEAR_HELI_ORIENTATION, ClearHeliOrientation);
     REGISTER_COMMAND_HANDLER(COMMAND_REMOVE_RC_BUGGY, RemoveRCBuggy);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CAR_PROOFS, SetCarProofs);

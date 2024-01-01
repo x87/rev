@@ -1,7 +1,7 @@
 #pragma once
 
 namespace notsa {
-namespace script {
+namespace scm {
 namespace commands {
 namespace cleo {
 namespace audiostream { void RegisterHandlers(); };
@@ -17,5 +17,5 @@ namespace vehicle { void RegisterHandlers(); };
 namespace world { void RegisterHandlers(); };
 }; // namespace cleo
 }; // namespace notsa
-}; // namespace script
+}; // namespace scm
 }; // namespace commands

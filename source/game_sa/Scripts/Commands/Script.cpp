@@ -103,7 +103,7 @@ void SetUpConversationNodeWithScriptedSpeech(
     CConversations::SetUpConversationNode(questionKey, answerYesKey, answerNoKey, questionWAV, answerYesWAV, answerNoWAV);
 }
 
-void notsa::script::commands::script::RegisterHandlers() {
+void notsa::scm::commands::script::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME, TerminateAllScriptsWithThisName);
     REGISTER_COMMAND_HANDLER(COMMAND_REMOVE_ALL_SCRIPT_FIRES, RemoveAllScriptFires);
     REGISTER_COMMAND_HANDLER(COMMAND_LOAD_SCENE, LoadScene);

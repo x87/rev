@@ -3,5 +3,5 @@
 #include "./Commands.hpp"
 #include <CommandParser/Parser.hpp>
 
-void notsa::script::commands::cleo::character::RegisterHandlers() {
+void notsa::scm::commands::cleo::character::RegisterHandlers() {
 }

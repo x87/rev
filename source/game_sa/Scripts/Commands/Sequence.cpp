@@ -16,6 +16,6 @@ void SetSequenceToRepeat(int32 index, bool repeat) {
     CTaskSequences::GetActiveSequence().m_bRepeatSequence = repeat;
 }
 
-void notsa::script::commands::sequence::RegisterHandlers() {
+void notsa::scm::commands::sequence::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_SET_SEQUENCE_TO_REPEAT, SetSequenceToRepeat);
 }

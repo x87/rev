@@ -4,7 +4,7 @@
 #include <CommandParser/Parser.hpp>
 
 #include "CommandParser/Parser.hpp"
-using namespace notsa::script;
+using namespace notsa::scm;
 /*!
 * Various camera commands
 */
@@ -37,7 +37,7 @@ void DoCameraBump(float horizontal, float vetical) {
     CCamera::GetActiveCamera().DoCamBump(horizontal, vetical);
 }
 
-void notsa::script::commands::camera::RegisterHandlers() {
+void notsa::scm::commands::camera::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_IS_POINT_ON_SCREEN, IsPointOnScreen);
     REGISTER_COMMAND_HANDLER(COMMAND_SHAKE_CAM, ShakeCam);
     REGISTER_COMMAND_HANDLER(COMMAND_ATTACH_CAMERA_TO_VEHICLE_LOOK_AT_VEHICLE, AttachCameraToVehicleLookAtVehicle);

@@ -8,7 +8,7 @@
 
 #include <RunningScript.h>
 
-using namespace notsa::script;
+using namespace notsa::scm;
 /*!
 * Various player commands
 */
@@ -78,7 +78,7 @@ bool IsPlayerInArea3D(CRunningScript* S, CPlayerPed& player, CVector p1, CVector
         : player.IsWithinArea(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
 }
 
-auto IsPlayerPlaying(CPlayerInfo& player) -> notsa::script::CompareFlagUpdate {
+auto IsPlayerPlaying(CPlayerInfo& player) -> notsa::scm::CompareFlagUpdate {
     return { player.m_nPlayerState == PLAYERSTATE_PLAYING };
 }
 
@@ -114,7 +114,7 @@ bool IsPlayerTouchingObjectOnFoot(CPlayerPed& player, CObject& object) {
 //
 //}
 
-void notsa::script::commands::player::RegisterHandlers() {
+void notsa::scm::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_CREATE_PLAYER, CreatePlayer);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_PLAYER_COORDINATES, GetPlayerCoordinates);
     REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_IN_AREA_2D, IsPlayerInArea2D);

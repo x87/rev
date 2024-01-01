@@ -5,7 +5,7 @@
 #include "MenuManager.h"
 #include "Pad.h"
 #include "CommandParser/Parser.hpp"
-using namespace notsa::script;
+using namespace notsa::scm;
 /*!
 * Various player pad commands
 */
@@ -31,7 +31,7 @@ bool HasGameJustReturnedFromFrontend() {
     return CPad::GetPad(0)->JustOutOfFrontEnd;
 }
 
-void notsa::script::commands::pad::RegisterHandlers() {
+void notsa::scm::commands::pad::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_IS_BUTTON_PRESSED, IsButtonPressed);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_PC_MOUSE_MOVEMENT, GetPCMouseMovement);
     REGISTER_COMMAND_HANDLER(COMMAND_IS_PC_USING_JOYPAD, IsPCUsingJoyPad);

@@ -8,7 +8,7 @@
 #include "Pools.h"
 
 namespace notsa {
-namespace script {
+namespace scm {
 /*!
 * Bool is a sepcial case, it isn't stored, but rather updates the compare flag.
 * TODO: Actually verify this theory.
@@ -113,5 +113,5 @@ inline void StoreArg(CRunningScript* S, const MultiRet<Ts...>& arg) {
     std::apply([S](const Ts&... args) { (StoreArg(S, args), ...); }, arg);
 }
 
-}; // namespace script
+}; // namespace scm
 }; // namespace notsa

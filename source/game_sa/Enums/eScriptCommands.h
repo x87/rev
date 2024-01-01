@@ -2895,7 +2895,7 @@ enum eScriptCommands {
     } \
 
 namespace notsa {
-namespace script {
+namespace scm {
 static std::string_view GetScriptCommandName(eScriptCommands cmd) {
     switch (cmd) {
     CASE(COMMAND_NOP);
@@ -5765,6 +5765,6 @@ static std::string_view GetScriptCommandName(eScriptCommands cmd) {
         return "Unknown";
     }
 }
-}; // namespace script
+}; // namespace scm
 }; // namespace notsa
 #undef CASE
