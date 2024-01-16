@@ -302,11 +302,6 @@ CTaskSimpleDuck* CPedIntelligence::GetTaskDuck(bool bIgnoreCheckingForSimplestAc
         return task;
     }
 
-    auto* secondaryTask = m_TaskMgr.GetTaskSecondary(TASK_SECONDARY_DUCK);
-    if (secondaryTask && secondaryTask->GetTaskType() == TASK_SIMPLE_DUCK) {
-        return (CTaskSimpleDuck*)secondaryTask;
-    }
-
     if (!bIgnoreCheckingForSimplestActiveTask) {
         if (const auto task = CTask::DynCast<CTaskSimpleDuck>(m_TaskMgr.GetSimplestActiveTask())) {
             return task;

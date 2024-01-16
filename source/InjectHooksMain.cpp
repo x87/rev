@@ -331,6 +331,7 @@
 #include "TaskComplexDrivePointRoute.h"
 #include "TaskComplexStareAtPed.h"
 #include "TaskSimpleCarSetPedInAsDriver.h"
+#include "TaskSimpleOnEscalator.h"
 #include "TaskComplexWaitForBus.h"
 #include "TaskSimpleWaitForBus.h"
 #include "TaskSimpleStandUp.h"
@@ -998,7 +999,7 @@ void InjectHooksMain() {
         // CTaskSimpleHurtPedWithCar::InjectHooks();
         // CTaskSimpleKillPedWithCar::InjectHooks();
         CTaskSimpleLookAbout::InjectHooks();
-        // CTaskSimpleOnEscalator::InjectHooks();
+        CTaskSimpleOnEscalator::InjectHooks();
         CTaskSimplePickUpBike::InjectHooks();
         CTaskSimplePlayerOnFire::InjectHooks();
         // CTaskSimpleRunAnimLoopedMiddle::InjectHooks();
