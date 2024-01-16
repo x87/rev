@@ -1,8 +1,9 @@
 #pragma once
 
 #include "eModelID.h"
+#include <extensions/WEnum.hpp>
 
-typedef uint16 ModelIndex;
+using ModelIndex = notsa::WEnumS16<eModelID>;
 
 namespace ModelIndices {
     extern ModelIndex& MI_TRAFFICLIGHTS;

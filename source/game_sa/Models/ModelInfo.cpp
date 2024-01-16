@@ -309,12 +309,12 @@ CBaseModelInfo* CModelInfo::GetModelInfoFromHashKey(uint32 uiHash, int32* index)
 }
 
 // 0x4C59F0
-CBaseModelInfo* CModelInfo::GetModelInfoUInt16(const char* name, uint16* pOutIndex)
+CBaseModelInfo* CModelInfo::GetModelInfoUInt16(const char* name, ModelIndex* pOutIndex)
 {
     int32 modelId = 0;
     auto result = GetModelInfo(name, &modelId);
     if (pOutIndex)
-        *pOutIndex = modelId;
+        *pOutIndex = (eModelID)modelId;
 
     return result;
 }

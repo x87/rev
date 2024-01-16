@@ -46,7 +46,7 @@ void CRope::CreateHookObjectForRope() {
         return;
 
     using namespace ModelIndices;
-    ModelIndex modelIndex = -1;
+    ModelIndex modelIndex = MODEL_INVALID;
     switch (m_nType) {
     case eRopeType::CRANE_MAGNET1:
     case eRopeType::CRANE_MAGNO:

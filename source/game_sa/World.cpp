@@ -2418,8 +2418,8 @@ void CWorld::RepositionOneObject(CEntity* object) {
     // Maybe.. maybe they were time travellers and used c++20 ranges, and had a good compiler to mask it away
     // you never know..
 
-    const auto IsObjectModelAnyOf = [object](std::initializer_list<ModelIndex> models) {
-        return std::ranges::find(models, (ModelIndex)object->m_nModelIndex) != models.end();
+    const auto IsObjectModelAnyOf = [object](std::initializer_list<eModelID> models) {
+        return std::ranges::find(models, (eModelID)object->m_nModelIndex) != models.end();
     };
 
     const auto modelInfo = CModelInfo::GetModelInfo(object->m_nModelIndex);
