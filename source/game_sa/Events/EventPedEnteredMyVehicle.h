@@ -2,7 +2,7 @@
 
 #include "EventEditableResponse.h"
 
-class CEventPedEnteredMyVehicle : public CEventEditableResponse {
+class CEventPedEnteredMyVehicle final : public CEventEditableResponse {
 public:
     CEventPedEnteredMyVehicle(/*const*/ CPed* ped, /*const*/ CVehicle* vehicle, eTargetDoor targetDoor); // todo: make const as OG
     ~CEventPedEnteredMyVehicle() override;

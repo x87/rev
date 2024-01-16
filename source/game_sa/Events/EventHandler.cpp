@@ -5,6 +5,7 @@
 #include "IKChainManager_c.h"
 #include "PedStats.h"
 
+#include "Tasks/TaskTypes/TaskSimpleOnEscalator.h"
 #include "Tasks/TaskTypes/TaskComplexFacial.h"
 #include "Tasks/TaskTypes/TaskSimpleUseGun.h"
 #include "Tasks/TaskTypes/TaskSimpleStandStill.h"
@@ -1514,7 +1515,7 @@ void CEventHandler::ComputeObjectCollisionResponse(CEventObjectCollision* e, CTa
 
 // 0x4BC150
 void CEventHandler::ComputeOnEscalatorResponse(CEvent* e, CTask* tactive, CTask* tsimplest) {
-    m_EventResponseTask = new CTaskSimpleStandStill{0, true};
+    m_EventResponseTask = new CTaskSimpleOnEscalator{};
 }
 
 // 0x4BAD50
@@ -1572,10 +1573,10 @@ void CEventHandler::ComputePedEnteredVehicleResponse(CEventPedEnteredMyVehicle* 
         case TASK_COMPLEX_DESTROY_CAR: // 0x4C1849
             return new CTaskComplexDestroyCar{ e->m_Vehicle };
         case TASK_COMPLEX_KILL_PED_ON_FOOT: { // 0x4C186A
-            if (!IsKillTaskAppropriate(m_Ped, e->m_PedThatEntered, *e)) {
-                return LeaveCarAndFlee();
+            if (IsKillTaskAppropriate(m_Ped, e->m_PedThatEntered, *e)) {
+                return new CTaskComplexKillPedOnFoot{ e->m_PedThatEntered };
             }
-            return new CTaskComplexKillPedOnFoot{ e->m_PedThatEntered };
+            return LeaveCarAndFlee();
         }
         case TASK_COMPLEX_SCREAM_IN_CAR_THEN_LEAVE: { // 0x4C1759
             if (e->m_PedThatEntered->IsPlayer() && CTheScripts::IsPlayerOnAMission()) {
