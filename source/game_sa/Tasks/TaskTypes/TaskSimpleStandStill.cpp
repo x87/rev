@@ -40,36 +40,42 @@ bool CTaskSimpleStandStill::MakeAbortable_Reversed(CPed* ped, eAbortPriority pri
 }
 
 bool CTaskSimpleStandStill::ProcessPed_Reversed(CPed* ped) {
+    const auto taskDuck = ped->bIsDucking
+        ? ped->m_pIntelligence->GetTaskDuck(false)
+        : nullptr;
+
     if (!m_timer.m_bStarted && m_timer.Start(m_nTime)) {
         if (!ped->bInVehicle) {
             ped->SetMoveState(PEDMOVE_STILL);
             ped->m_nSwimmingMoveState = PEDMOVE_STILL;
-            if (!ped->bIsDucking || !ped->m_pIntelligence->GetTaskDuck(false)) {
-                CAnimManager::BlendAnimation(ped->m_pRwClump, ped->m_nAnimGroup, ANIM_ID_IDLE, m_fBlendData);
+            if (taskDuck) {
+                taskDuck->ControlDuckMove();
             } else {
-                CTaskSimpleDuck* pDuckTask = ped->m_pIntelligence->GetTaskDuck(false);
-                pDuckTask->ControlDuckMove();
+                CAnimManager::BlendAnimation(ped->m_pRwClump, ped->m_nAnimGroup, ANIM_ID_IDLE, m_fBlendData);
             }
-            if (ped->m_pPlayerData)
+            if (ped->m_pPlayerData) {
                 ped->m_pPlayerData->m_fMoveBlendRatio = 0.0f;
+            }
         }
     }
 
-    if (ped->bIsDucking && ped->m_pIntelligence->GetTaskDuck(false)) {
-        CTaskSimpleDuck* pDuckTask = ped->m_pIntelligence->GetTaskDuck(false);
-        pDuckTask->ControlDuckMove();
+    if (taskDuck) {
+        taskDuck->ControlDuckMove(); // This is already called above... Why is it called twice?
     } else {
         ped->SetMoveState(PEDMOVE_STILL);
     }
-
+    
     if (m_bUseAnimIdleStance) {
-        auto pIdleAnimAssoc = RpAnimBlendClumpGetAssociation(ped->m_pRwClump, ANIM_ID_IDLE);
-        if (pIdleAnimAssoc && pIdleAnimAssoc->m_BlendAmount > 0.99f)
-            return true;
+        if (const auto idleAnim = RpAnimBlendClumpGetAssociation(ped->m_pRwClump, ANIM_ID_IDLE)) {
+            if (idleAnim->GetBlendAmount() >= 0.99f) {
+                return true;
+            }
+        }
     }
 
-    if (m_bLooped || !m_timer.Reset())
+    if (m_bLooped || !m_timer.Reset()) {
         return false;
+    }
 
     return m_timer.IsOutOfTime();
 }
