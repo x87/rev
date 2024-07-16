@@ -1765,7 +1765,7 @@ void CRadar::SetupAirstripBlips() {
                 distances[i] = DistanceBetweenPoints2D(table.position, veh->GetPosition());
             }
 
-            return (eAirstripLocation)std::distance(distances, rng::min_element(distances));
+            return (eAirstripLocation)notsa::indexof(distances, rng::min_element(distances));
         }();
 
         if (airstrip_blip) {

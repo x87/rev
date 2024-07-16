@@ -171,7 +171,7 @@ void CVector::FromMultiply3x3(const CMatrix& matrix, const CVector& vector) {
 }
 
 CVector CVector::Average(const CVector* begin, const CVector* end) {
-    return std::accumulate(begin, end, CVector{}) / (float)std::distance(begin, end);
+    return std::accumulate(begin, end, CVector{}) / (float)notsa::indexof(begin, end);
 }
 
 float CVector::Heading(bool limitAngle) const {

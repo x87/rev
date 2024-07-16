@@ -208,7 +208,7 @@ uint32 CStreaming::AddImageToList(const char* fileName, bool bNotPlayerImg) {
 
     *entry = { fileName, bNotPlayerImg }; // Set entry details
 
-    return std::distance(ms_files, entry);
+    return notsa::indexof(ms_file, entry);
 }
 
 // 0x40C520

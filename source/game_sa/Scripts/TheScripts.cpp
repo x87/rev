@@ -323,7 +323,7 @@ uint32 CTheScripts::AddScriptCheckpoint(CVector at, CVector pointTo, float radiu
             NOTSA_UNREACHABLE();
         }
     }();
-    const auto index = GetNewUniqueScriptThingIndex(std::distance(ScriptCheckpointArray.begin(), cp), SCRIPT_THING_CHECKPOINT);
+    const auto index = GetNewUniqueScriptThingIndex(notsa::indexof(ScriptCheckpointArray, cp), SCRIPT_THING_CHECKPOINT);
     cp->m_Checkpoint = CCheckpoints::PlaceMarker(
         index,
         type,
@@ -349,7 +349,7 @@ uint32 CTheScripts::AddScriptEffectSystem(FxSystem_c* system) {
 
     fx->m_bUsed = true;
     fx->m_pFxSystem = system;
-    return GetNewUniqueScriptThingIndex(std::distance(ScriptEffectSystemArray.begin(), fx), SCRIPT_THING_EFFECT_SYSTEM);
+    return GetNewUniqueScriptThingIndex(notsa::indexof(ScriptEffectSystemArray, fx), SCRIPT_THING_EFFECT_SYSTEM);
 }
 
 // signature changed (CVector)
@@ -360,7 +360,7 @@ uint32 CTheScripts::AddScriptSearchLight(CVector start, CEntity* entity, CVector
     });
     assert(ssl != ScriptSearchLightArray.end()); // In vanilla game does OOB access.
 
-    const auto idx = std::distance(ScriptSearchLightArray.begin(), ssl);
+    const auto idx = notsa::indexof(ScriptSearchLightArray, ssl);
     RemoveScriptSearchLight(idx);
 
     ssl->m_bClipIfColliding = false;
@@ -388,7 +388,7 @@ uint32 CTheScripts::AddScriptSphere(uint32 id, CVector posn, float radius) {
     });
     assert(sphere != ScriptSphereArray.end()); // In vanilla game does OOB access.
 
-    const auto idx = std::distance(ScriptSphereArray.begin(), sphere);
+    const auto idx = notsa::indexof(ScriptSphereArray, sphere);
     sphere->m_nId     = idx + id;
     sphere->m_vCoords = posn;
     sphere->m_bUsed   = true;
@@ -873,7 +873,7 @@ int32 CTheScripts::GetNewUniqueScriptThingIndex(int32 index, eScriptThingType ty
 // 0x464D20
 int32 CTheScripts::GetScriptIndexFromPointer(CRunningScript* thread) {
     assert(ScriptsArray.data() <= thread && thread < ScriptsArray.data() + ScriptsArray.size());
-    return std::distance(ScriptsArray.data(), thread);
+    return notsa::indexof(ScriptsArray, thread);
 }
 
 /*!

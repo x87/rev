@@ -136,7 +136,7 @@ int32 CAnimManager::GetAnimationBlockIndex(CAnimBlock* animBlock) {
 int32 CAnimManager::GetAnimationBlockIndex(const char* name) {
     const auto b = GetAnimationBlock(name);
     return b
-        ? (int32)(std::distance(ms_aAnimBlocks.data(), b))
+        ? (int32)(notsa::indexof(ms_aAnimBlocks, b))
         : -1;
 }
 

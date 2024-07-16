@@ -63,7 +63,7 @@ public:
         assert(m_aFires[idx].IsActive());
         return m_aFires[idx];
     }
-    auto GetIndexOf(const CFire* fire) const { return std::distance(m_aFires.data(), fire); }
+    auto GetIndexOf(const CFire* fire) const { return notsa::indexof(m_aFires, *fire); }
 private:
     friend void InjectHooksMain();
     static void InjectHooks();

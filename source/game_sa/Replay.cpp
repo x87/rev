@@ -410,7 +410,7 @@ void CReplay::SaveReplayToHD() {
         // TODO: Refactor
         const auto NextSlot = [](uint8 slot) { return (slot + 1) % NUM_REPLAY_BUFFERS; };
 
-        auto inUse = std::distance(BufferStatus.begin(), rng::find(BufferStatus, REPLAYBUFFER_IN_USE));
+        auto inUse = notsa::indexof(BufferStatus, rng::find(BufferStatus, REPLAYBUFFER_IN_USE));
         auto slot = NextSlot(inUse);
 
         for (auto status = BufferStatus[slot]; status != REPLAYBUFFER_IN_USE; status = BufferStatus[slot]) {

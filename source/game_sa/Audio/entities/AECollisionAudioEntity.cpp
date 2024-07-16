@@ -84,7 +84,7 @@ void CAECollisionAudioEntity::GetCollisionSoundStatus(CEntity* entity1, CEntity*
     });
 
     // 300 is possibly unintended.
-    outIndex = foundEntry != m_Entries.end() ? std::distance(m_Entries.begin(), foundEntry) : 300;
+    outIndex = foundEntry != m_Entries.end() ? notsa::indexof(m_Entries, foundEntry) : 300;
 }
 
 // 0x4DB150
