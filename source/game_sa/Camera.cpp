@@ -370,7 +370,7 @@ void CCamera::Fade(float duration, eFadeFlag direction) {
     m_bMusicFading = true;
     m_nMusicFadingDirection = direction;
 
-    m_fTimeToFadeMusic = std::clamp(duration * 0.3f, duration * 0.3f, duration);
+    m_fTimeToFadeMusic = std::clamp(duration * 0.3f, 0.3f, duration);
 
     switch (direction) {
     case eFadeFlag::FADE_IN:
