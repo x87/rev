@@ -9,6 +9,7 @@ using namespace notsa::script;
 * Various camera commands
 */
 
+namespace notsa::script::commands::camera {
 bool IsPointOnScreen(CVector pos, float radius) {
     if (pos.z <= MAP_Z_LOW_LIMIT) {
         pos.z = CWorld::FindGroundZForCoord(pos.x, pos.y);
@@ -44,9 +45,11 @@ void DoFade(CRunningScript* S, uint32 time, eFadeFlag direction) {
     }
 }
 
-void notsa::script::commands::camera::RegisterHandlers() {
+void RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_IS_POINT_ON_SCREEN, IsPointOnScreen);
     REGISTER_COMMAND_HANDLER(COMMAND_SHAKE_CAM, ShakeCam);
     REGISTER_COMMAND_HANDLER(COMMAND_ATTACH_CAMERA_TO_VEHICLE_LOOK_AT_VEHICLE, AttachCameraToVehicleLookAtVehicle);
     REGISTER_COMMAND_HANDLER(COMMAND_DO_CAMERA_BUMP, DoCameraBump);
+    REGISTER_COMMAND_HANDLER(COMMAND_DO_FADE, DoFade);
 }
+};
