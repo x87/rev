@@ -34,10 +34,11 @@ void AttachCameraToVehicleLookAtVehicle(CVehicle& attachTo, CVector offset, CVeh
     );
 }
 
-void DoCameraBump(float horizontal, float vetical) {
-    CCamera::GetActiveCamera().DoCamBump(horizontal, vetical);
+void DoCameraBump(float horizontal, float vertical) {
+    CCamera::GetActiveCamera().DoCamBump(horizontal, vertical);
 }
 
+// COMMAND_DO_FADE - 0x47C7C7
 void DoFade(CRunningScript* S, uint32 time, eFadeFlag direction) {
     TheCamera.Fade((float)time / 1000.f, direction);
     if (S->m_bUseMissionCleanup) {
