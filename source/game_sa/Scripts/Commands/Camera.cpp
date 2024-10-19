@@ -37,6 +37,13 @@ void DoCameraBump(float horizontal, float vetical) {
     CCamera::GetActiveCamera().DoCamBump(horizontal, vetical);
 }
 
+void DoFade(CRunningScript* S, uint32 time, eFadeFlag direction) {
+    TheCamera.Fade((float)time / 1000.f, direction);
+    if (S->m_bUseMissionCleanup) {
+        CTheScripts::bScriptHasFadedOut = direction == eFadeFlag::FADE_IN;
+    }
+}
+
 void notsa::script::commands::camera::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_IS_POINT_ON_SCREEN, IsPointOnScreen);
     REGISTER_COMMAND_HANDLER(COMMAND_SHAKE_CAM, ShakeCam);

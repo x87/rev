@@ -367,11 +367,9 @@ void CCamera::Fade(float duration, eFadeFlag direction) {
     if (m_bIgnoreFadingStuffForMusic && direction != eFadeFlag::FADE_OUT) {
         return;
     }
-
-    m_bMusicFading = true;
-    m_nMusicFadingDirection = direction;
-
-    m_fTimeToFadeMusic = std::clamp(duration * 0.3f, 0.3f, duration);
+    m_bMusicFading           = true;
+    m_nMusicFadingDirection  = direction;
+    m_fTimeToFadeMusic       = std::clamp(duration * 0.3f, 0.3f, duration);
     m_nFadeTimeStartedMusic  = CTimer::GetTimeInMS();
     m_fTimeToWaitToFadeMusic = direction == eFadeFlag::FADE_IN
         ? duration - m_fTimeToFadeMusic
@@ -382,7 +380,7 @@ void CCamera::Fade(float duration, eFadeFlag direction) {
 }
 
 // 0x50AD20
-float CCamera::FindCamFOV() {
+float CCamera::FindCamFOV() const {
     return m_aCams[m_nActiveCam].m_fFOV;
 }
 
@@ -390,7 +388,7 @@ float CCamera::FindCamFOV() {
 * @addr 0x50AD40
 * @return Rotation in radians at which the gun should point at, relative to the camera's vertical angle
 */
-float CCamera::Find3rdPersonQuickAimPitch() {
+float CCamera::Find3rdPersonQuickAimPitch() const {
     const auto& cam = m_aCams[m_nActiveCam];
 
     // https://mathworld.wolfram.com/images/eps-svg/SOHCAHTOA_500.svg
@@ -452,19 +450,19 @@ CVector* CCamera::GetGameCamPosition() {
 }
 
 // 0x50AE60
-bool CCamera::GetLookingLRBFirstPerson() {
+bool CCamera::GetLookingLRBFirstPerson() const {
     return m_aCams[m_nActiveCam].m_nMode == eCamMode::MODE_1STPERSON
         && m_aCams[m_nActiveCam].m_nDirectionWasLooking != LOOKING_DIRECTION_FORWARD;
 }
 
 // 0x50AED0
-bool CCamera::GetLookingForwardFirstPerson() {
+bool CCamera::GetLookingForwardFirstPerson() const {
     return m_aCams[m_nActiveCam].m_nMode == eCamMode::MODE_1STPERSON
         && m_aCams[m_nActiveCam].m_nDirectionWasLooking == LOOKING_DIRECTION_FORWARD;
 }
 
 // 0x50AE90
-int32 CCamera::GetLookDirection() {
+int32 CCamera::GetLookDirection() const {
     const auto& cam = m_aCams[m_nActiveCam];
     if (cam.m_nMode != eCamMode::MODE_CAM_ON_A_STRING &&
         cam.m_nMode != eCamMode::MODE_1STPERSON &&
@@ -550,7 +548,7 @@ void CCamera::DealWithMirrorBeforeConstructRenderList(bool bActiveMirror, CVecto
 
 /// III/VC leftover
 // 0x50B8F0
-void CCamera::RenderMotionBlur() {
+void CCamera::RenderMotionBlur() const {
     ZoneScoped;
 
     if (m_nBlurType) {
@@ -1647,16 +1645,16 @@ void CCamera::LoadPathSplines(FILE* file) {
 }
 
 // 0x50AB50
-void CCamera::GetScreenRect(CRect* rect) {
+void CCamera::GetScreenRect(CRect* rect) const {
     rect->left  = 0.0f;
     rect->right = SCREEN_WIDTH;
 
     if (m_bWideScreenOn) {
-        rect->top = (float)(RsGlobal.maximumHeight / 2)          * m_fScreenReductionPercentage / 100.f - SCREEN_SCALE_Y(22.0f);
-        rect->bottom    = SCREEN_HEIGHT - (RsGlobal.maximumHeight / 2) * m_fScreenReductionPercentage / 100.f - SCREEN_SCALE_Y(14.0f);
+        rect->top    = (float)(RsGlobal.maximumHeight / 2) * m_fScreenReductionPercentage / 100.f - SCREEN_SCALE_Y(22.0f);
+        rect->bottom = SCREEN_HEIGHT - (RsGlobal.maximumHeight / 2) * m_fScreenReductionPercentage / 100.f - SCREEN_SCALE_Y(14.0f);
     } else {
-        rect->top = 0.0f;
-        rect->bottom    = SCREEN_HEIGHT;
+        rect->top    = 0.0f;
+        rect->bottom = SCREEN_HEIGHT;
     }
 }
 
