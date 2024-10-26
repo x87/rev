@@ -18,7 +18,6 @@ public:
     constexpr CVector() = default;
     constexpr CVector(float X, float Y, float Z) : RwV3d{ X, Y, Z } {}
     constexpr CVector(RwV3d rwVec) { x = rwVec.x; y = rwVec.y; z = rwVec.z; }
-    constexpr CVector(const CVector* rhs) { x = rhs->x; y = rhs->y; z = rhs->z; } // TODO: Remove
     constexpr explicit CVector(float value) { x = y = z = value; }
     explicit CVector(const CVector2D& v2, float z = 0.f);
 
@@ -209,6 +208,8 @@ public:
     static inline float DistSqr(CVector a, CVector b) {
         return (a - b).SquaredMagnitude();
     }
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(CVector, x, y, z);
 };
 VALIDATE_SIZE(CVector, 0xC);
 

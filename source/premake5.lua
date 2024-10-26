@@ -1,4 +1,4 @@
-project "gta_reversed"
+project "gta_sa_modern"
     cppdialect "C++latest"         -- C++23
     kind "SharedLib"
     targetname "gta_reversed"
@@ -38,8 +38,13 @@ project "gta_reversed"
         "../libs/imgui/misc/cpp",
         "../libs/dxsdk",
         "../libs/spdlog/include",
-        "../libs/tracy/public"
+        "../libs/tracy/public",
+        "../libs/json/include"
     }
+
+    filter "options:script-tracing"
+        defines { "NOTSA_SCRIPT_TRACING" }
+    filter {}
     
     defines { 
         "NOMINMAX", 
@@ -72,7 +77,8 @@ project "gta_reversed"
         "strmiids.lib",
         "dsound.lib",
         "d3d9.lib",
-        "dbghelp" 
+        "dbghelp",
+        "json"
     }
 
     libdirs { 

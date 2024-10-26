@@ -123,7 +123,11 @@ void CCoronas::Init() {
 // Terminates coronas
 // 0x6FAB00
 void CCoronas::Shutdown() {
-    rng::for_each(gpCoronaTexture, RwTextureDestroy);
+    for (auto& t : gpCoronaTexture) {
+        if (t) {
+            RwTextureDestroy(std::exchange(t, nullptr));
+        }
+    }
 }
 
 // Updates coronas
@@ -549,7 +553,7 @@ void CCoronas::DoSunAndMoon() {
                 (uint8)cc.m_nSunCoreGreen,
                 (uint8)cc.m_nSunCoreBlue,
                 255u,
-                &coronaPos,
+                coronaPos,
                 cc.m_fSunSize * radiusMult,
                 999999.88f,
                 gpCoronaTexture[0],
