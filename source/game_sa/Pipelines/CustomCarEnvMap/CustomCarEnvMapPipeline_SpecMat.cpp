@@ -69,13 +69,13 @@ int32 CCustomCarEnvMapPipeline::pluginSpecMatStreamGetSizeCB(const void* object,
 }
 
 // 0x5D8B90
-float CCustomCarEnvMapPipeline::GetFxSpecSpecularity(RpMaterial* material) {
+float CCustomCarEnvMapPipeline::GetFxSpecSpecularity(const RpMaterial* material) {
     auto data = *RWPLUGINOFFSET(CustomSpecMapPipeMaterialData*, material, ms_specularMapPluginOffset);
     return data ? data->specularity : 0.0f;
 }
 
 // 0x5D8B50
-RwTexture* CCustomCarEnvMapPipeline::GetFxSpecTexture(RpMaterial* material) {
+RwTexture* CCustomCarEnvMapPipeline::GetFxSpecTexture(const RpMaterial* material) {
     auto data = *RWPLUGINOFFSET(CustomSpecMapPipeMaterialData*, material, ms_specularMapPluginOffset);
     return data ? data->texture : nullptr;
 }

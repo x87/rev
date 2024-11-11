@@ -36,7 +36,6 @@
 /*--- System Header Files ---*/
 #include "rwplcore.h"
 
-
 /*--- Automatically derived from: C:/daily/rwsdk/src/pipe/p2/p2resort.h ---*/
 
 /*--- Automatically derived from: C:/daily/rwsdk/src/pipe/p2/p2macros.h ---*/
@@ -2106,28 +2105,6 @@ struct rwImmediGlobals
 
 /*--- Automatically derived from: C:/daily/rwsdk/driver/d3d9/drvfns.h ---*/
 
-#define RWD3D9_MAX_TEXTURE_STAGES  8
-
-#define RWD3D9_MAX_VERTEX_STREAMS  2
-
-typedef struct RxD3D9VertexStream RxD3D9VertexStream;
-/**
- * \ingroup worldextensionsd3d9
- * \struct RxD3D9VertexStream
- * This structure contains D3D9 resource specific components.
- */
-struct RxD3D9VertexStream
-{
-    void *vertexBuffer;     /**< Vertex buffer */
-    RwUInt32 offset;        /**< Offset in bytes since the beginning
-                                 of the Vertex buffer */
-    RwUInt32 stride;        /**< Size of the components in bytes */
-    RwUInt16 geometryFlags; /**< Geometry locked flags */
-    RwUInt8 managed;        /**< Created by the Vertex Buffer Manager */
-    RwUInt8 dynamicLock;    /**< Using RwD3D9DynamicVertexBufferLock */
-};
-
-typedef void(*rwD3D9DeviceRestoreCallBack)(void);
 
 /*--- Automatically derived from: C:/daily/rwsdk/src/baframe.h ---*/
 
@@ -2859,45 +2836,45 @@ RwBool RwD3D9ChangeMultiSamplingLevels(RwUInt32 numLevels); // 0x7F8A90
 RwBool RwD3D9CameraAttachWindow(void* camera, void* hwnd); // 0x7F8D70
 void RwD3D9SetStreamSource(RwUInt32 streamNumber, void* streamData, RwUInt32 offset, RwUInt32 stride); // 0x7FA030
 void _rwD3D9RenderStateFlushCache(); // 0x7FC200
-void _rwD3D9DrawIndexedPrimitiveUP(RwUInt32 primitiveType, RwUInt32 minIndex, RwUInt32 numVertices, RwUInt32 primitiveCount, const void* indexData, const void* vertexStreamZeroData, RwUInt32 VertexStreamZeroStride); // 0x7FA1F0
-void _rwD3D9DrawPrimitiveUP(RwUInt32 primitiveType, RwUInt32 primitiveCount, const void* vertexStreamZeroData, RwUInt32 VertexStreamZeroStride); // 0x7FA290
-void _rwD3D9DrawIndexedPrimitive(RwUInt32 primitiveType, RwInt32 baseVertexIndex, RwUInt32 minIndex, RwUInt32 numVertices, RwUInt32 startIndex, RwUInt32 primitiveCount); // 0x7FA320
-void _rwD3D9SetVertexShaderConstant(RwUInt32 registerAddress, const void* constantData, RwUInt32 constantCount); // 0x7FACA0
-void _rwD3D9SetPixelShaderConstant(RwUInt32 registerAddress, const void* constantData, RwUInt32 constantCount); // 0x7FAD00
-void _rwD3D9SetFVF(RwUInt32 fvf); // 0x7F9F30
-void _rwD3D9SetVertexShader(void *shader); // 0x7F9FB0
-void _rwD3D9SetPixelShader(void *shader); // 0x7F9FF0
-void RwD3D9SetRenderState(RwUInt32 state, RwUInt32 value); // 0x7FC2D0
-void RwD3D9GetRenderState(RwUInt32 state, void* value); // 0x7FC320
-void RwD3D9SetTextureStageState(RwUInt32 stage, RwUInt32 type, RwUInt32 value); // 0x7FC340
-void RwD3D9GetTextureStageState(RwUInt32 stage, RwUInt32 type, void* value); // 0x7FC3A0
-void RwD3D9SetSamplerState(RwUInt32 stage, RwUInt32 type, RwUInt32 value); // 0x7FC3C0
-void RwD3D9GetSamplerState(RwUInt32 stage, RwUInt32 type, void* value); // 0x7FC400
-void RwD3D9SetStencilClear(RwUInt32 stencilClear); // 0x7F9D30
-RwUInt32 RwD3D9GetStencilClear(); // 0x7F9D40
-RwBool RwD3D9SetTexture(RwTexture* texture, RwUInt32 stage); // 0x7FDE70
-RwBool RwD3D9SetTransform(RwUInt32 state, const void* matrix); // 0x7FA390
-void RwD3D9GetTransform(RwUInt32 state, void* matrix); // 0x7FA4F0
-RwBool RwD3D9SetMaterial(const void* material); // 0x7FC430
-RwBool RwD3D9SetClipPlane(RwUInt32 index, const RwV4d* plane); // 0x7FC4A0
-RwBool RwD3D9SetTransformWorld(const RwMatrix* matrix); // 0x7FA520
-RwBool RwD3D9SetSurfaceProperties(const RwSurfaceProperties* surfaceProps, const RwRGBA* color, RwUInt32 flags); // 0x7FC4D0
-RwBool RwD3D9SetLight(RwInt32 index, const void* light); // 0x7FA660
-void RwD3D9GetLight(RwInt32 index, void* light); // 0x7FA820
-RwBool RwD3D9EnableLight(RwInt32 index, RwBool enable); // 0x7FA860
-RwBool RwD3D9IndexBufferCreate(RwUInt32 numIndices, void* indexBuffer); // 0x4C9970
-RwBool RwD3D9CreateVertexDeclaration(const void* elements, void* vertexdeclaration); // 0x7FAA30
-void RwD3D9DeleteVertexDeclaration(); // 0x7FAC10
-void RwD3D9DeleteVertexShader(); // 0x7FAC90
-RwBool RwD3D9CreatePixelShader(const RwUInt32* function, void* shader); // 0x7FACC0
-void RwD3D9DeletePixelShader(); // 0x7FACF0
-D3DCAPS9* RwD3D9GetCaps(); // 0x7FAD20
-RwBool RwD3D9CameraIsSphereFullyInsideFrustum(const void* camera, const void* sphere); // 0x7FAD30
-RwBool RwD3D9CameraIsBBoxFullyInsideFrustum(const void* camera, const void* boundingBox); // 0x7FAD90
-void _rwD3D9RasterConvertToNonPalettized(RwRaster* raster); // 0x4CD250
-RwBool _rwDeviceRegisterPlugin(void); // 0x7F5F60
-void _rwD3D9DeviceSetRestoreCallback(rwD3D9DeviceRestoreCallBack callback); // 0x7FAE20
-rwD3D9DeviceRestoreCallBack _rwD3D9DeviceGetRestoreCallback(void); // 0x7FAE30
+//void _rwD3D9DrawIndexedPrimitiveUP(RwUInt32 primitiveType, RwUInt32 minIndex, RwUInt32 numVertices, RwUInt32 primitiveCount, const void* indexData, const void* vertexStreamZeroData, RwUInt32 VertexStreamZeroStride); // 0x7FA1F0
+//void _rwD3D9DrawPrimitiveUP(RwUInt32 primitiveType, RwUInt32 primitiveCount, const void* vertexStreamZeroData, RwUInt32 VertexStreamZeroStride); // 0x7FA290
+//void _rwD3D9DrawIndexedPrimitive(RwUInt32 primitiveType, RwInt32 baseVertexIndex, RwUInt32 minIndex, RwUInt32 numVertices, RwUInt32 startIndex, RwUInt32 primitiveCount); // 0x7FA320
+//void _rwD3D9SetVertexShaderConstant(RwUInt32 registerAddress, const void* constantData, RwUInt32 constantCount); // 0x7FACA0
+//void _rwD3D9SetPixelShaderConstant(RwUInt32 registerAddress, const void* constantData, RwUInt32 constantCount); // 0x7FAD00
+//void _rwD3D9SetFVF(RwUInt32 fvf); // 0x7F9F30
+//void _rwD3D9SetVertexShader(void *shader); // 0x7F9FB0
+//void _rwD3D9SetPixelShader(void *shader); // 0x7F9FF0
+//void RwD3D9SetRenderState(RwUInt32 state, RwUInt32 value); // 0x7FC2D0
+//void RwD3D9GetRenderState(RwUInt32 state, void* value); // 0x7FC320
+//void RwD3D9SetTextureStageState(RwUInt32 stage, RwUInt32 type, RwUInt32 value); // 0x7FC340
+//void RwD3D9GetTextureStageState(RwUInt32 stage, RwUInt32 type, void* value); // 0x7FC3A0
+//void RwD3D9SetSamplerState(RwUInt32 stage, RwUInt32 type, RwUInt32 value); // 0x7FC3C0
+//void RwD3D9GetSamplerState(RwUInt32 stage, RwUInt32 type, void* value); // 0x7FC400
+//void RwD3D9SetStencilClear(RwUInt32 stencilClear); // 0x7F9D30
+//RwUInt32 RwD3D9GetStencilClear(); // 0x7F9D40
+//RwBool RwD3D9SetTexture(RwTexture* texture, RwUInt32 stage); // 0x7FDE70
+//RwBool RwD3D9SetTransform(RwUInt32 state, const void* matrix); // 0x7FA390
+//void RwD3D9GetTransform(RwUInt32 state, void* matrix); // 0x7FA4F0
+//RwBool RwD3D9SetMaterial(const void* material); // 0x7FC430
+//RwBool RwD3D9SetClipPlane(RwUInt32 index, const RwV4d* plane); // 0x7FC4A0
+//RwBool RwD3D9SetTransformWorld(const RwMatrix* matrix); // 0x7FA520
+//RwBool RwD3D9SetSurfaceProperties(const RwSurfaceProperties* surfaceProps, const RwRGBA* color, RwUInt32 flags); // 0x7FC4D0
+//RwBool RwD3D9SetLight(RwInt32 index, const void* light); // 0x7FA660
+//void RwD3D9GetLight(RwInt32 index, void* light); // 0x7FA820
+//RwBool RwD3D9EnableLight(RwInt32 index, RwBool enable); // 0x7FA860
+//RwBool RwD3D9IndexBufferCreate(RwUInt32 numIndices, void* indexBuffer); // 0x4C9970
+//RwBool RwD3D9CreateVertexDeclaration(const void* elements, void* vertexdeclaration); // 0x7FAA30
+//void RwD3D9DeleteVertexDeclaration(); // 0x7FAC10
+//void RwD3D9DeleteVertexShader(); // 0x7FAC90
+//RwBool RwD3D9CreatePixelShader(const RwUInt32* function, void* shader); // 0x7FACC0
+//void RwD3D9DeletePixelShader(); // 0x7FACF0
+//D3DCAPS9* RwD3D9GetCaps(); // 0x7FAD20
+//RwBool RwD3D9CameraIsSphereFullyInsideFrustum(const void* camera, const void* sphere); // 0x7FAD30
+//RwBool RwD3D9CameraIsBBoxFullyInsideFrustum(const void* camera, const void* boundingBox); // 0x7FAD90
+//void _rwD3D9RasterConvertToNonPalettized(RwRaster* raster); // 0x4CD250
+//RwBool _rwDeviceRegisterPlugin(void); // 0x7F5F60
+//void _rwD3D9DeviceSetRestoreCallback(rwD3D9DeviceRestoreCallBack callback); // 0x7FAE20
+//rwD3D9DeviceRestoreCallBack _rwD3D9DeviceGetRestoreCallback(void); // 0x7FAE30
 RwImage* RwImageResample(RwImage* dstImage, const RwImage* srcImage); // 0x80C600
 RwImage* RwImageCreateResample(const RwImage* srcImage, RwInt32 width, RwInt32 height); // 0x80CD10
 RwImage* RwImageSetFromRaster(RwImage* image, RwRaster* raster); // 0x804250

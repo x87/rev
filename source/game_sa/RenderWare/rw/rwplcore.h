@@ -39,7 +39,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
 /*--- Automatically derived from: C:/daily/rwsdk/os/win/ostypes.h ---*/
 #ifndef WIN_OSTYPES_H
 #define WIN_OSTYPES_H

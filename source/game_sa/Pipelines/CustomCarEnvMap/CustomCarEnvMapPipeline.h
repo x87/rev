@@ -126,6 +126,8 @@ public:
     static RwTexture* GetFxEnvTexture(RpMaterial* material);
     static void SetFxEnvTexture(RpMaterial* material, RwTexture* texture);
 
+    static void 
+
     // Env Atm
     static void* pluginEnvAtmConstructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginEnvAtmDestructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
@@ -139,8 +141,8 @@ public:
     static RwStream* pluginSpecMatStreamWriteCB(RwStream* stream, int32 binaryLength, const void* object, int32 offsetInObject, int32 sizeInObject);
     static int32 pluginSpecMatStreamGetSizeCB(const void* object, int32 offsetInObject, int32 sizeInObject);
 
-    static float GetFxSpecSpecularity(RpMaterial* material);
-    static RwTexture* GetFxSpecTexture(RpMaterial* material);
+    static float GetFxSpecSpecularity(const RpMaterial* material);
+    static RwTexture* GetFxSpecTexture(const RpMaterial* material);
     static void SetFxSpecTexture(RpMaterial* material, RwTexture* texture);
     static void SetFxSpecSpecularity(RpMaterial* material, float value);
 };

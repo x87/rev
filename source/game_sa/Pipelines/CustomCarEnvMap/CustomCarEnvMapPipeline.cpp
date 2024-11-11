@@ -1,7 +1,9 @@
 #include "StdInc.h"
 
+#include "rw/driver/d3d9/drvfns.h"
 #include "CustomCarEnvMapPipeline.h"
 #include "app_light.h"
+#include <CarFXRenderer.cpp>
 
 void CCustomCarEnvMapPipeline::InjectHooks() {
     RH_ScopedClass(CCustomCarEnvMapPipeline);
@@ -15,7 +17,7 @@ void CCustomCarEnvMapPipeline::InjectHooks() {
     RH_ScopedInstall(CustomPipeAtomicSetup, 0x5DA610);
     RH_ScopedInstall(CreateCustomObjPipe, 0x5D9F80);
     RH_ScopedInstall(CustomPipeInstanceCB, 0x5D8490);
-    RH_ScopedInstall(CustomPipeRenderCB, 0x5D9900, { .reversed = false });
+    RH_ScopedInstall(CustomPipeRenderCB, 0x5D9900);
     RH_ScopedInstall(pluginEnvAtmConstructorCB, 0x5D8D30);
     RH_ScopedInstall(pluginEnvAtmDestructorCB, 0x5D9730);
     RH_ScopedInstall(pluginEnvAtmCopyConstructorCB, 0x5D9780, { .reversed = false });
@@ -83,7 +85,7 @@ bool CCustomCarEnvMapPipeline::RegisterPlugin() {
 
 // 0x5D8980
 bool IsEnvironmentMappingSupported() {
-    const auto caps = RwD3D9GetCaps();
+    const auto caps = (D3DCAPS9*)RwD3D9GetCaps();
     return caps->MaxTextureBlendStages > 1 &&
            caps->MaxSimultaneousTextures >= 2 &&
            caps->TextureOpCaps & D3DTEXOPCAPS_BLENDFACTORALPHA &&
@@ -207,8 +209,72 @@ RwBool CCustomCarEnvMapPipeline::CustomPipeInstanceCB(void* object, RwResEntry* 
 }
 
 // 0x5D9900
-void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry *repEntry, void *object, uint8 type, uint32 flags) {
-    return plugin::Call<0x5D9900, RwResEntry*, void*, uint8, uint32>(repEntry, object, type, flags);
+void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* object, RwUInt8 type, RwUInt32 flags) {
+    //return plugin::Call<0x5D9900, RwResEntry*, void*, uint8, uint32>(repEntry, object, type, flags);
+    assert(type == rpATOMIC);
+
+    const auto specIntensity = gSpecIntensity * 1.85f;
+
+    const auto atomic = (RpAtomic*)(object);
+    const auto geo = RpAtomicGetGeometry(atomic);
+
+    _rwD3D9EnableClippingIfNeeded(atomic, type);
+
+    const auto noReflections = (CVisibilityPlugins::GetAtomicId(atomic) & (ATOMIC_IS_BLOWN_UP|ATOMIC_DISABLE_REFLECTIONS)) != 0;
+
+    DWORD rsLighting = 0;
+    RwD3D9GetRenderState(D3DRS_LIGHTING, &rsLighting);
+    const auto noExtraLight = rsLighting == 0 && !(flags & 8);
+    if (noExtraLight) {
+        RwD3D9SetTexture(0, 0);
+        RwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(0xFF, 0xFF, 0xFF, 0xFF));
+        RwD3D9SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+        RwD3D9SetTextureStageState(0, D3DTSS_COLORARG2, D3DTOP_SELECTARG2);
+        RwD3D9SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+        RwD3D9SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTOP_SELECTARG2);
+    }
+
+    const auto resHeader = (RxD3D9ResEntryHeader*)(resEntry + 1);
+    const auto resMeshData = (RxD3D9InstanceData*)(resEntry + 1);
+
+    if (const auto i = resHeader->indexBuffer) {
+        RwD3D9SetIndices(i);
+    }
+    
+    _rwD3D9SetStreams(resHeader->vertexStream, resHeader->useOffsets);
+    RwD3D9SetVertexDeclaration(resHeader->vertexDeclaration);
+
+    for (auto i = 0; i < resHeader->numMeshes; i++) { // 0x5D99E9
+        auto* const mesh = &resMeshData[i];
+        auto* const mat = mesh->material;
+        const auto  mflags = std::bit_cast<RwUInt32>(mat->surfaceProps.specular); // no clue whats going on here
+        const auto  noSpec = !(mflags & 4) || (g_fx.GetFxQuality() < FX_QUALITY_HIGH && noReflections);
+
+        // Calculate spec and power & set render states
+        float spec, power;
+        if (noSpec || rsLighting == 0) { // 0x5D9A4E - 0x5D9A74
+            spec  = 0.f;
+            power = 0.f;
+        } else { // 0x5D9A7F - 0x5D9B25
+            const auto specularity = GetFxSpecSpecularity(mat);
+            spec  = std::min(1.f, specIntensity * specularity * 2.f);
+            power = specularity * 100.f;
+
+            RwD3D9SetRenderState(D3DRS_SPECULARENABLE, TRUE);
+            RwD3D9SetRenderState(D3DRS_LOCALVIEWER, FALSE);
+            RwD3D9SetRenderState(D3DRS_SPECULARMATERIALSOURCE, D3DMCS_MATERIAL);
+        }
+
+        RwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+        RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
+
+
+        if ((mflags & 1) && !noReflections) {
+            RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, RWRSTATE(D3DTADDRESS_WRAP));
+
+
+        }
+    }
 }
 
 CustomEnvMapPipeMaterialData* CCustomCarEnvMapPipeline::DuplicateCustomEnvMapPipeMaterialData(CustomEnvMapPipeMaterialData** data) {

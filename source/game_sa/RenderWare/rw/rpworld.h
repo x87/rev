@@ -2146,7 +2146,7 @@ struct RxD3D9ResEntryHeader
 
     RwUInt32    numMeshes;      /**< The number of meshes */
 
-    void        *indexBuffer;   /**< Index buffer */
+    IDirect3DIndexBuffer9        *indexBuffer;   /**< Index buffer */ // NOTSA: Changed type from void*
 
     RwUInt32    primType;       /**< Primitive type */
 
@@ -2154,7 +2154,7 @@ struct RxD3D9ResEntryHeader
 
     RwBool      useOffsets;      /**< Use vertex buffer offsets when setting the streams */
 
-    void        *vertexDeclaration;   /**< Vertex declaration */
+    IDirect3DVertexDeclaration9        *vertexDeclaration;   /**< Vertex declaration */ // NOTSA: Changed type from `void*`
 
     RwUInt32    totalNumIndex;  /**< Total number of indices. Needed for
                                      reinstancing, not for rendering */
@@ -2630,3 +2630,53 @@ const RpWorld* RpWorldStreamWrite(const RpWorld* world, RwStream* stream); // 0x
 RpWorldSectorChunkInfo* _rpWorldSectorChunkInfoRead(RwStream* stream, RpWorldSectorChunkInfo* worldSectorChunkInfo, RwInt32* bytesRead); // 0x7635B0
 RpPlaneSectorChunkInfo* _rpPlaneSectorChunkInfoRead(RwStream* stream, RpPlaneSectorChunkInfo* planeSectorChunkInfo, RwInt32* bytesRead); // 0x763620
 RpWorldChunkInfo* _rpWorldChunkInfoRead(RwStream* stream, RpWorldChunkInfo* worldChunkInfo, RwInt32* bytesRead); // 0x763690
+
+/* Usefull functions */
+void
+_rwD3D9EnableClippingIfNeeded(void *object,
+    RwUInt32 type);
+
+
+/****************************************************************************
+macro/inline functionality
+*/
+
+#define RpWorldSectorGetBBoxMacro(_sector)              \
+    (&((_sector)->boundingBox))
+
+#define RpWorldSectorGetTightBBoxMacro(_sector)         \
+    (&((_sector)->tightBoundingBox))
+
+#define RpWorldSectorGetNumVerticesMacro(_sector)       \
+    ((_sector)->numVertices)
+
+#define RpWorldSectorGetNumTrianglesMacro(_sector)      \
+    ((_sector)->numTriangles)
+
+#define RpWorldSectorGetTrianglesMacro(_sector)         \
+    ((_sector)->triangles)
+
+#define RpWorldSectorGetVerticesMacro(_sector)          \
+    ((_sector)->vertices)
+
+#if ((!defined(RWDEBUG)) && (!defined(RWSUPPRESSINLINE)))
+
+#define RpWorldSectorGetBBox(_sector)                   \
+    RpWorldSectorGetBBoxMacro(_sector)
+
+#define RpWorldSectorGetTightBBox(_sector)              \
+    RpWorldSectorGetTightBBoxMacro(_sector)
+
+#define RpWorldSectorGetNumTriangles(_sector)           \
+    RpWorldSectorGetNumTrianglesMacro(_sector)
+
+#define RpWorldSectorGetNumVertices(_sector)            \
+    RpWorldSectorGetNumVerticesMacro(_sector)
+
+#define RpWorldSectorGetTriangles(_sector)              \
+    RpWorldSectorGetTrianglesMacro(_sector)
+
+#define RpWorldSectorGetVertices(_sector)               \
+    RpWorldSectorGetVerticesMacro(_sector)
+
+#endif /* ((!defined(RWDEBUG)) && (!defined(RWSUPPRESSINLINE))) */
