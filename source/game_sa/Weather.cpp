@@ -59,23 +59,25 @@ void CWeather::InjectHooks() {
     RH_ScopedCategoryGlobal();
 
     RH_ScopedInstall(Init, 0x72A480);
-    // RH_ScopedInstall(AddRain, 0x72A9A0);
+    RH_ScopedInstall(AddRain, 0x72A9A0, { .reversed = false });
     RH_ScopedInstall(AddSandStormParticles, 0x72A820);
     RH_ScopedInstall(FindWeatherTypesList, 0x72A520);
     RH_ScopedInstall(ForceWeather, 0x72A4E0);
     RH_ScopedInstall(ForceWeatherNow, 0x72A4F0);
-    // RH_ScopedInstall(ForecastWeather, 0x72A590);
+    RH_ScopedInstall(ForecastWeather, 0x72A590, { .reversed = false });
     RH_ScopedInstall(ReleaseWeather, 0x72A510);
     RH_ScopedInstall(RenderRainStreaks, 0x72AF70);
     RH_ScopedInstall(SetWeatherToAppropriateTypeNow, 0x72A790);
-    // RH_ScopedInstall(Update, 0x72B850);
-    // RH_ScopedInstall(UpdateInTunnelness, 0x72B630);
-    // RH_ScopedInstall(UpdateWeatherRegion, 0x72A640, true); // bad
+    RH_ScopedInstall(Update, 0x72B850, { .reversed = false });
+    RH_ScopedInstall(UpdateInTunnelness, 0x72B630, { .reversed = false });
+    //RH_ScopedInstall(UpdateWeatherRegion, 0x72A640, true, { .reversed = false }); // bad
     RH_ScopedInstall(IsRainy, 0x4ABF50);
 }
 
 // 0x72A480
 void CWeather::Init() {
+    ZoneScoped;
+
     NewWeatherType = WEATHER_EXTRASUNNY_LA;
     OldWeatherType = WEATHER_EXTRASUNNY_LA;
     WeatherRegion  = WEATHER_REGION_DEFAULT;
@@ -244,7 +246,7 @@ void CWeather::RenderRainStreaks() {
 
         const uint8 alphas[]{ streakStrength[s], static_cast<uint8>(streakStrength[s] / 2u) };
         for (auto v = 0u; v < std::size(alphas); v++) {
-            RxObjSpace3DVertex* vertex = &aTempBufferVertices[GetRealVertexIndex(v)];
+            RxObjSpace3DVertex* vertex = &TempBufferVertices.m_3d[GetRealVertexIndex(v)];
 
             const RwRGBA color{ 210, 210, 230, alphas[v] };
             // const RwRGBA color{ 255, 0, 0, 255 }; // For debug (makes it more visible)
@@ -272,7 +274,7 @@ void CWeather::RenderRainStreaks() {
     RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(TRUE));
     RwRenderStateSet(rwRENDERSTATETEXTURERASTER,     RWRSTATE(NULL));
 
-    if (RwIm3DTransform(aTempBufferVertices, uiTempBufferVerticesStored, nullptr, rwIM3D_VERTEXXYZ)) {
+    if (RwIm3DTransform(TempBufferVertices.m_3d, uiTempBufferVerticesStored, nullptr, rwIM3D_VERTEXXYZ)) {
         RwIm3DRenderIndexedPrimitive(rwPRIMTYPELINELIST, aTempBufferIndices, uiTempBufferIndicesStored);
         RwIm3DEnd();
     }
@@ -298,6 +300,8 @@ void CWeather::SetWeatherToAppropriateTypeNow() {
 
 // 0x72B850
 void CWeather::Update() {
+    ZoneScoped;
+
     plugin::Call<0x72B850>();
 }
 
@@ -306,29 +310,26 @@ void CWeather::UpdateInTunnelness() {
     plugin::Call<0x72B630>();
 }
 
+// Based on 0x72A640
+eWeatherRegion CWeather::FindWeatherRegion(CVector2D pos) {
+    if (pos.x > 1000.0f && pos.y > 910.0f) {
+        return WEATHER_REGION_LV;
+    }
+    if (pos.x > -850.0f && pos.x < 1000.0f && pos.y > 1280.0f) {
+        return WEATHER_REGION_DESERT;
+    }
+    if (pos.x < -1430.0f && pos.y > -580.0f && pos.y < 1430.0f) {
+        return WEATHER_REGION_SF;
+    }
+    if (pos.x > 250.0f && pos.x < 3000.0f && pos.y > -3000.0f && pos.y < -850.0f) {
+        return WEATHER_REGION_LA;
+    }
+    return WEATHER_REGION_DEFAULT;
+}
+
 // 0x72A640
 void CWeather::UpdateWeatherRegion(CVector* posn) {
-    CVector camPos = TheCamera.GetPosition();
-    if (posn) {
-        camPos = *posn;
-    }
-    if (camPos.x > 1000.0f && camPos.y > 910.0f) {
-        WeatherRegion = WEATHER_REGION_LV;
-        return;
-    }
-    if (camPos.x > -850.0f && camPos.x < 1000.0f && camPos.y > 1280.0f) {
-        WeatherRegion = WEATHER_REGION_DESERT;
-        return;
-    }
-    if (camPos.x < -1430.0f && camPos.y > 580.0f && camPos.y < 1430.0f) {
-        WeatherRegion = WEATHER_REGION_SF;
-        return;
-    }
-    if (camPos.x > 250.0f && camPos.x < 3000.0f && camPos.y > -3000.0f && camPos.y < -850.0f) { // todo: maybe wrong
-        WeatherRegion = WEATHER_REGION_LA;
-        return;
-    }
-    WeatherRegion = WEATHER_REGION_DEFAULT;
+    WeatherRegion = FindWeatherRegion(posn ? *posn : TheCamera.GetPosition());
 }
 
 // 0x4ABF50

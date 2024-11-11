@@ -12,7 +12,7 @@
 
 class CPed;
 
-class CAEPedAudioEntity : public CAEAudioEntity {
+class NOTSA_EXPORT_VTABLE CAEPedAudioEntity : public CAEAudioEntity {
 public:
     bool                   m_bCanAddEvent;
     char                   field_7D;
@@ -43,7 +43,7 @@ public:
     static void StaticInitialise();
     void Terminate();
 
-    void AddAudioEvent(eAudioEvents event, float volume, float speed, CPhysical* ped = nullptr, uint8 surfaceId = 0, int32 a7 = 0, uint32 maxVol = 0);
+    void AddAudioEvent(eAudioEvents event, float volume = 0.0f, float speed = 1.0f, CPhysical* ped = nullptr, uint8 surfaceId = 0, int32 a7 = 0, uint32 maxVol = 0);
 
     void TurnOnJetPack();
     void TurnOffJetPack();
@@ -68,7 +68,6 @@ private:
     friend void InjectHooksMain();
     static void InjectHooks();
 
-    void UpdateParameters_Reversed(CAESound* sound, int16 curPlayPos) { UpdateParameters(sound, curPlayPos); }
 };
 
 VALIDATE_SIZE(CAEPedAudioEntity, 0x15C);

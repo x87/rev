@@ -51,6 +51,7 @@ void ColDef::operator delete(void* data)
     CColStore::ms_pColPool->Delete(static_cast<ColDef*>(data));
 }
 
+// 0x4113F0
 // Initialise
 void CColStore::Initialise()
 {
@@ -88,6 +89,7 @@ int32 CColStore::AddColSlot(const char* name)
     def->m_bProcedural = false;
     def->m_bInterior = false;
     def->m_Area = CRect();
+    strcpy_s(def->name, name);
     def->m_nModelIdStart = -1;
     def->m_nModelIdEnd = SHRT_MIN;
     def->m_nRefCount = 0;
@@ -131,14 +133,21 @@ void CColStore::AddRef(int32 colNum)
     ++colDef->m_nRefCount; //BUG: We don't check whether the GetAt returned nullptr, which it can
 }
 
-int32 CColStore::FindColSlot()
+// We can assume that there was a code similar to `CIplStore::FindIplSlot` here, but it was deleted for some reason
+int32 CColStore::FindColSlot(const char* name)
 {
+    for (auto& def : ms_pColPool->GetAllValid()) {
+        if (!_stricmp(name, def.name)) {
+            return ms_pColPool->GetIndex(&def);
+        }
+    }
     return -1;
 }
 
 // 0x410EC0
-void CColStore::BoundingBoxesPostProcess()
-{
+void CColStore::BoundingBoxesPostProcess() {
+    ZoneScoped;
+
     for (auto i = 1; i < ms_pColPool->GetSize(); i++) {
         auto* def = ms_pColPool->GetAt(i);
         if (!def)
@@ -240,8 +249,9 @@ bool CColStore::HasCollisionLoaded(const CVector& pos, int32 areaCode)
 }
 
 // 0x4113D0
-void CColStore::LoadAllBoundingBoxes()
-{
+void CColStore::LoadAllBoundingBoxes() {
+    ZoneScoped;
+
     if (CColAccel::isCacheLoading())
         CColAccel::cacheLoadCol();
     else
@@ -249,8 +259,7 @@ void CColStore::LoadAllBoundingBoxes()
 }
 
 // 0x410E60
-void CColStore::LoadAllCollision()
-{
+void CColStore::LoadAllCollision() {
     for (auto i = 1; i < ms_pColPool->GetSize(); i++) {
         auto* def = ms_pColPool->GetAt(i);
         if (!def)
@@ -352,8 +361,9 @@ void CColStore::LoadCollision(CVector pos, bool bIgnorePlayerVeh)
 }
 
 // 0x410E00
-void CColStore::RemoveAllCollision()
-{
+void CColStore::RemoveAllCollision() {
+    ZoneScoped;
+
     for (auto i = 1; i < ms_pColPool->GetSize(); i++) {
         auto* def = ms_pColPool->GetAt(i);
         if (!def)

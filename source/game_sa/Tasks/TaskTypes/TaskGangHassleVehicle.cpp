@@ -3,17 +3,17 @@
 #include "TaskGangHassleVehicle.h"
 
 void CTaskGangHassleVehicle::InjectHooks() {
-    RH_ScopedClass(CTaskGangHassleVehicle);
+    RH_ScopedVirtualClass(CTaskGangHassleVehicle, 0x86F9D4, 11);
     RH_ScopedCategory("Tasks/TaskTypes");
 
     RH_ScopedInstall(Constructor, 0x65FAC0);
     RH_ScopedInstall(Destructor, 0x65FB60);
-    // RH_ScopedInstall(GetTargetHeading, 0x65FDD0);
-    // RH_ScopedInstall(CalcTargetOffset, 0x6641A0);
-    // RH_ScopedInstall(Clone, 0x65FC00);
-    // RH_ScopedInstall(CreateNextSubTask, 0x65FC80);
-    // RH_ScopedInstall(CreateFirstSubTask, 0x664BA0);
-    // RH_ScopedInstall(ControlSubTask, 0x6637C0);
+    RH_ScopedInstall(GetTargetHeading, 0x65FDD0, { .reversed = false });
+    RH_ScopedInstall(CalcTargetOffset, 0x6641A0, { .reversed = false });
+    RH_ScopedInstall(Clone, 0x65FC00, { .reversed = false });
+    RH_ScopedInstall(CreateNextSubTask, 0x65FC80, { .reversed = false });
+    RH_ScopedInstall(CreateFirstSubTask, 0x664BA0, { .reversed = false });
+    RH_ScopedInstall(ControlSubTask, 0x6637C0, { .reversed = false });
 }
 
 // 0x65FAC0

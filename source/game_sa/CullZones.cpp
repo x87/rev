@@ -11,6 +11,7 @@ void CCullZones::InjectHooks() {
     RH_ScopedInstall(AddTunnelAttributeZone, 0x72DB50);
     RH_ScopedInstall(AddMirrorAttributeZone, 0x72DC10);
     RH_ScopedInstall(InRoomForAudio, 0x72DD70);
+    RH_ScopedInstall(FewerCars, 0x72DD80);
     RH_ScopedInstall(CamNoRain, 0x72DDB0);
     RH_ScopedInstall(PlayerNoRain, 0x72DDC0);
     RH_ScopedInstall(FewerPeds, 0x72DD90);
@@ -25,6 +26,8 @@ void CCullZones::InjectHooks() {
 
 // 0x72D6B0
 void CCullZones::Init() {
+    ZoneScoped;
+
     NumAttributeZones = 0;
     CurrentFlags_Player = 0;
     CurrentFlags_Camera = 0;
@@ -76,6 +79,11 @@ void CCullZones::AddMirrorAttributeZone(const CVector& center, float unk1, float
 // 0x72DD70
 bool CCullZones::InRoomForAudio() {
     return (CurrentFlags_Camera & eZoneAttributes::IN_ROOMS_FOR_AUDIO) != 0;
+}
+
+// 0x72DD80
+bool CCullZones::FewerCars() {
+    return (CurrentFlags_Player & eZoneAttributes::FEWER_CARS) != 0;
 }
 
 // 0x72DDB0
@@ -165,8 +173,10 @@ eZoneAttributes CCullZones::FindAttributesForCoors(CVector pos) {
 
 // 0x72DEC0
 void CCullZones::Update() {
+    ZoneScoped;
+
     if ((CTimer::GetFrameCounter() & 7) == 2) {
-        CurrentFlags_Camera = FindAttributesForCoors(TheCamera.GetGameCamPosition());
+        CurrentFlags_Camera = FindAttributesForCoors(*TheCamera.GetGameCamPosition());
         return;
     }
 

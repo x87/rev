@@ -27,8 +27,7 @@ void CMenuManager::DrawFrontEnd() {
         m_nCurrentScreen = m_bMainMenuSwitch ? SCREEN_MAIN_MENU : SCREEN_PAUSE_MENU;
     }
 
-    const auto& menu = aScreens[m_nCurrentScreen];
-    if (m_nCurrentScreenItem == 0 && menu.m_aItems[0].m_nActionType == MENU_ACTION_TEXT) {
+    if (m_nCurrentScreenItem == 0 && aScreens[m_nCurrentScreen].m_aItems[0].m_nActionType == MENU_ACTION_TEXT) {
         m_nCurrentScreenItem = 1;
     }
 
@@ -38,9 +37,9 @@ void CMenuManager::DrawFrontEnd() {
 // NOTSA
 void CMenuManager::DrawBuildInfo() {
     char buf[128] = {0};
-    strcpy(buf, BUILD_NAME_FULL);
+    strcpy_s(buf, BUILD_NAME_FULL);
     char version[32];
-    sprintf(
+    sprintf_s(
         version,
         " / RW %d.%d.%d.%d.%d",
         0xF & RwEngineGetVersion() >> 16,
@@ -49,14 +48,14 @@ void CMenuManager::DrawBuildInfo() {
         0xF & RwEngineGetVersion() >> 4,
         0xF & RwEngineGetVersion() >> 0
     );
-    strcpy(buf + strlen(buf), version);
+    strcpy_s(buf + strlen(buf), 32u - strlen(buf), version);
 
     CFont::SetProportional(true);
     CFont::SetScale(StretchX(0.25f), StretchY(0.5f));
     CFont::SetColor({ 255, 255, 255, 100 });
     CFont::SetOrientation(eFontAlignment::ALIGN_RIGHT);
     CFont::SetFontStyle(eFontStyle::FONT_SUBTITLES);
-    CFont::PrintStringFromBottom(SCREEN_WIDTH - StretchX(10.0f), SCREEN_HEIGHT - StretchY(10.0f), buf);
+    CFont::PrintStringFromBottom(SCREEN_WIDTH - StretchX(10.0f), SCREEN_HEIGHT - StretchY(10.0f), GxtCharFromAscii(buf));
 }
 
 // 0x57B750
@@ -308,15 +307,15 @@ void CMenuManager::DrawBackground() {
             CRect rect;
 
             rect.left   = x + StretchX(6.0f);
-            rect.top    = y + StretchY(3.0f);
+            rect.bottom    = y + StretchY(3.0f);
             rect.right  = x + SCREEN_STRETCH_X(24.0f);
-            rect.bottom = y + SCREEN_SCALE_Y(21.0f);
+            rect.top = y + SCREEN_SCALE_Y(21.0f);
             m_aFrontEndSprites[spriteId].Draw(rect, { 100, 100, 100, 50 }); // shadow
 
             rect.left   = x;
-            rect.top    = y;
+            rect.bottom    = y;
             rect.right  = x + SCREEN_STRETCH_X(18.0f);
-            rect.bottom = y + SCREEN_SCALE_Y(18.0f);
+            rect.top = y + SCREEN_SCALE_Y(18.0f);
             m_aFrontEndSprites[spriteId].Draw(rect, { 255, 255, 255, 255 });
         };
 
@@ -351,14 +350,14 @@ void CMenuManager::DrawWindow(const CRect& coords, const char* key, uint8 color,
         CFont::SetScale(SCREEN_SCALE_X(1.0f), SCREEN_SCALE_Y(1.4f));
 
         float x = coords.left + SCREEN_SCALE_X(10.0f);
-        float y = std::min(coords.top, coords.bottom) - SCREEN_SCALE_Y(16);
+        float y = std::min(coords.bottom, coords.top) - SCREEN_SCALE_Y(16);
         CFont::PrintString(x, y, TheText.Get(const_cast<char*>(key)));
     }
 }
 
 // 0x578F50, untested
-void CMenuManager::DrawWindowedText(float x, float y, float wrap, const char* str1, const char* str2, eFontAlignment alignment) {
-    // return plugin::CallMethod<0x578F50, CMenuManager*, float, float, float, Const char*, Const char*, eFontAlignment>(this, x, y, a4, str, str2, alignment);
+void CMenuManager::DrawWindowedText(float x, float y, float wrap, const char* title, const char* message, eFontAlignment alignment) {
+    // return plugin::CallMethod<0x578F50, CMenuManager*, float, float, float, Const char*, Const char*, eFontAlignment>(this, x, y, a4, str, message, alignment);
 
     CFont::SetWrapx(x + wrap - StretchX(10.0f));
     CFont::SetRightJustifyWrap(StretchX(10.0f) + wrap);
@@ -368,9 +367,9 @@ void CMenuManager::DrawWindowedText(float x, float y, float wrap, const char* st
     CFont::SetScale(StretchX(0.7f), StretchY(1.0f));
 
     CRect rt;
-    CFont::GetTextRect(&rt, x, y, TheText.Get(str2));
+    CFont::GetTextRect(&rt, x, y, TheText.Get(message));
     rt.left -= 4.0f;
-    rt.top  += StretchY(22.0f);
+    rt.bottom  += StretchY(22.0f);
     CSprite2d::DrawRect(rt, {0, 0, 0, 255});
     CFont::SetColor({225, 225, 225, 255});
     CFont::SetDropColor({0, 0, 0, 255});
@@ -380,11 +379,11 @@ void CMenuManager::DrawWindowedText(float x, float y, float wrap, const char* st
     CFont::SetScaleForCurrentLanguage(StretchX(1.1f), StretchY(1.4f));
     CFont::SetWrapx(rt.right);
 
-    if (str1 && *str1) {
-        CFont::PrintString(rt.left + StretchX(20.0f), rt.bottom - StretchY(16.0f), TheText.Get(str1));
+    if (title && *title) {
+        CFont::PrintString(rt.left + StretchX(20.0f), rt.top - StretchY(16.0f), TheText.Get(title));
     }
 
-    if (str2 && *str2) {
+    if (message && *message) {
         CFont::SetWrapx(x + wrap - StretchX(10.0f));
         CFont::SetRightJustifyWrap(StretchX(10.0f) + wrap);
         CFont::SetCentreSize(wrap - 2.0f * StretchX(10.0f));
@@ -394,7 +393,7 @@ void CMenuManager::DrawWindowedText(float x, float y, float wrap, const char* st
 
         CFont::SetDropShadowPosition(2);
         CFont::SetDropColor({ 0, 0, 0, 255 });
-        CFont::PrintString(x, y + StretchY(15.0f), TheText.Get(str2));
+        CFont::PrintString(x, y + StretchY(15.0f), TheText.Get(message));
     }
 }
 

@@ -38,6 +38,8 @@ void CBirds::InjectHooks() {
 
 // 0x711EC0
 void CBirds::Init() {
+    ZoneScoped;
+
     for (auto& bird : aBirds) {
         bird.m_bCreated = false;
     }
@@ -142,6 +144,8 @@ void CBirds::Shutdown() {
 
 // 0x712330
 void CBirds::Update() {
+    ZoneScoped;
+
     const auto& vecCamPos = TheCamera.GetPosition();
 
     if (!CGame::currArea
@@ -149,7 +153,8 @@ void CBirds::Update() {
         && CClock::ClockHoursInRange(5, 22)
         && (CTimer::GetFrameCounter() % 512) == std::size(aBirds)
     ) {
-        auto iNumBirdsToCreate = (uint32)CGeneral::GetRandomNumberInRange(1, std::size(aBirds) + 1 - uiNumberOfBirds);
+        auto iNumBirdsToCreate = CGeneral::GetRandomNumberInRange(std::size(aBirds) - uiNumberOfBirds) + 1;
+
         eBirdsBiome biome = eBirdsBiome::BIOME_WATER;
 
         if (TheCamera.m_fDistanceToWater > 30.0F) {
@@ -200,7 +205,7 @@ void CBirds::Update() {
                 );
 
                 float fWaterLevel;
-                if (!CWaterLevel::GetWaterLevelNoWaves(vecBirdSpawnPos.x, vecBirdSpawnPos.y, vecBirdSpawnPos.z, &fWaterLevel, nullptr, nullptr) || fWaterLevel + 4.0F < fBirdSpawnZ) {
+                if (!CWaterLevel::GetWaterLevelNoWaves(vecBirdSpawnPos, &fWaterLevel, nullptr, nullptr) || fWaterLevel + 4.0F < fBirdSpawnZ) {
                     auto vecForward = TheCamera.m_mCameraMatrix.GetForward();
                     vecForward.z = 0.0F;
                     vecForward.Normalise();
@@ -248,6 +253,8 @@ void CBirds::Update() {
 
 // 0x712810
 void CBirds::Render() {
+    ZoneScoped;
+
     if (uiNumberOfBirds == 0)
         return;
 
@@ -342,10 +349,10 @@ void CBirds::Render() {
                         NOTSA_UNREACHABLE("CBirds::Render::lambda suppress warning");
                         return std::make_pair(CVector(), CBirdColor());
                     }();
-                    auto vecWorldPos = matBirdTransform * point;
+                    auto vecWorldPos = matBirdTransform.TransformPoint(point);
 
                     auto iBufferInd = uiTempBufferVerticesStored + uiVertInd;
-                    auto vert1 = &aTempBufferVertices[iBufferInd];
+                    auto vert1 = &TempBufferVertices.m_3d[iBufferInd];
                     RwRGBA rwColor = CRGBA(color.cRed, color.cGreen, color.cBlue, cAlpha).ToRwRGBA();
                     RxObjSpace3DVertexSetPreLitColor(vert1, &rwColor);
                     RxObjSpace3DVertexSetPos(vert1, &vecWorldPos);
@@ -354,11 +361,11 @@ void CBirds::Render() {
 
                     // Mirror on the other side with slightly changed colors
                     point.x = -point.x;
-                    vecWorldPos = matBirdTransform * point;
+                    vecWorldPos = matBirdTransform.TransformPoint(point);
                     color.Scale(0.8F);
                     rwColor = CRGBA(color.cRed, color.cGreen, color.cBlue, cAlpha).ToRwRGBA();
 
-                    auto vert2 = &aTempBufferVertices[iBufferInd + 8];
+                    auto vert2 = &TempBufferVertices.m_3d[iBufferInd + 8];
                     RxObjSpace3DVertexSetPreLitColor(vert2, &rwColor);
                     RxObjSpace3DVertexSetPos(vert2, &vecWorldPos);
                     RxObjSpace3DVertexSetU(vert2, faRenderCoorsU[uiVertInd]);
@@ -390,7 +397,7 @@ void CBirds::HandleGunShot(const CVector* pointA, const CVector* pointB) {
             continue;
 
         CColLine line{ *pointA, *pointB };
-        CColSphere sphere{ 0.5f, bird.m_vecPosn };
+        CColSphere sphere{ bird.m_vecPosn, 0.5f };
 
         if (CCollision::TestLineSphere(line, sphere)) {
             vecBirdShotAt = bird.m_vecPosn;

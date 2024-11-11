@@ -3,7 +3,7 @@
 #include "TaskComplexLeaveCar.h"
 
 void CTaskComplexLeaveCar::InjectHooks() {
-    RH_ScopedClass(CTaskComplexLeaveCar);
+    RH_ScopedVirtualClass(CTaskComplexLeaveCar, 0x86E828, 11);
     RH_ScopedCategory("Tasks/TaskTypes");
 }
 
@@ -40,6 +40,11 @@ CTaskComplexLeaveCar::~CTaskComplexLeaveCar() {
     }
 
     delete m_pTaskUtilityLineUpPedWithCar;
+}
+
+CTaskComplexLeaveCar::CTaskComplexLeaveCar(const CTaskComplexLeaveCar& o) :
+    CTaskComplexLeaveCar{ o.m_pTargetVehicle, o.m_nTargetDoor, o.m_nDelayTime, o.m_bSensibleLeaveCar, o.m_bForceGetOut }
+{
 }
 
 // 0x641100

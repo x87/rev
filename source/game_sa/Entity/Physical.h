@@ -80,7 +80,7 @@ public:
             uint32 bOnSolidSurface : 1;
             uint32 bBroken : 1;
             uint32 bProcessCollisionEvenIfStationary : 1; // ref @ 0x6F5CF0
-            uint32 b13 : 1;                               // only used for peds
+            uint32 bSkipLineCol : 1;                               // only used for peds
             uint32 bDontApplySpeed : 1;
             uint32 b15 : 1;
             uint32 bProcessingShift : 1;
@@ -158,7 +158,7 @@ public:
     // originally virtual functions
     void Add() override;
     void Remove() override;
-    CRect* GetBoundRect(CRect* rect) override;
+    CRect GetBoundRect() override;
     void ProcessControl() override;
     void ProcessCollision() override;
     void ProcessShift() override;
@@ -226,8 +226,10 @@ public:
     bool CheckCollision();
     bool CheckCollision_SimpleCar();
 
-    CVector& GetMoveSpeed() { return m_vecMoveSpeed; }
-    void ResetMoveSpeed() { m_vecMoveSpeed = CVector(); }
+    void     SetMoveSpeedXY(CVector2D v)   { m_vecMoveSpeed = CVector{v.x, v.y, m_vecMoveSpeed.z}; }
+    CVector& GetMoveSpeed()                { return m_vecMoveSpeed; }
+    void     SetVelocity(CVector velocity) { m_vecMoveSpeed = velocity; } // 0x441130
+    void     ResetMoveSpeed()              { SetVelocity(CVector{}); }
 
     CVector& GetTurnSpeed() { return m_vecTurnSpeed; }
     void ResetTurnSpeed() { m_vecTurnSpeed = CVector(); }
@@ -252,14 +254,6 @@ private:
     CPhysical* Constructor() { this->CPhysical::CPhysical(); return this; }
     CPhysical* Destructor() { this->CPhysical::~CPhysical(); return this; }
 
-    void Add_Reversed() { CPhysical::Add(); }
-    void Remove_Reversed() { CPhysical::Remove(); }
-    CRect* GetBoundRect_Reversed(CRect* rect) { return CPhysical::GetBoundRect(rect); }
-    void ProcessControl_Reversed() { CPhysical::ProcessControl(); }
-    int32 ProcessEntityCollision_Reversed(CEntity* entity, CColPoint* colPoint) { return CPhysical::ProcessEntityCollision(entity, colPoint); }
-    void ProcessCollision_Reversed() { CPhysical::ProcessCollision(); }
-    void ProcessShift_Reversed() { CPhysical::ProcessShift(); }
-    bool TestCollision_Reversed(bool bApplySpeed) { return CPhysical::TestCollision(bApplySpeed); }
 };
 
 VALIDATE_SIZE(CPhysical, 0x138);

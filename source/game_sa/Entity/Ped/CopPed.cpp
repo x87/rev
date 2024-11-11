@@ -3,7 +3,7 @@
 #include "CopPed.h"
 
 void CCopPed::InjectHooks() {
-    RH_ScopedClass(CCopPed);
+    RH_ScopedVirtualClass(CCopPed, 0x86C120, 26);
     RH_ScopedCategory("Entity/Ped");
 
     RH_ScopedInstall(Constructor, 0x5DDC60);
@@ -12,14 +12,14 @@ void CCopPed::InjectHooks() {
     RH_ScopedInstall(AddCriminalToKill, 0x5DDEB0);
     RH_ScopedInstall(RemoveCriminalToKill, 0x5DE040);
     RH_ScopedInstall(ClearCriminalsToKill, 0x5DE070);
-    RH_ScopedVirtualInstall(ProcessControl, 0x5DE160);
+    RH_ScopedVMTInstall(ProcessControl, 0x5DE160);
 }
 
-/* Horrible design, but R* also allowed to pass in a ModelID */
-eModelID ResolveModelForCopType(uint32_t typeOrModelID) {
-    switch (typeOrModelID) {
+// NOTSA
+eModelID CCopPed::GetPedModelForCopType(eCopType ctype) {
+    switch (ctype) {
     case COP_TYPE_CITYCOP:
-        return (eModelID)CStreaming::GetDefaultCopModel();
+        return CStreaming::GetDefaultCopModel();
     case COP_TYPE_LAPDM1:
         return MODEL_LAPDM1;
     case COP_TYPE_CSHER:
@@ -32,7 +32,23 @@ eModelID ResolveModelForCopType(uint32_t typeOrModelID) {
     case COP_TYPE_SWAT2:
         return MODEL_SWAT;
     default:
-        return (eModelID)typeOrModelID; /* A modelID was passed in */
+        NOTSA_UNREACHABLE();
+    }
+}
+
+/* Horrible design, but R* also allowed to pass in a ModelID */
+eModelID ResolveModelForCopType(uint32_t typeOrModelID) {
+    switch (typeOrModelID) {
+    case COP_TYPE_CITYCOP:
+    case COP_TYPE_LAPDM1:
+    case COP_TYPE_CSHER:
+    case COP_TYPE_ARMY:
+    case COP_TYPE_FBI:
+    case COP_TYPE_SWAT1:
+    case COP_TYPE_SWAT2:
+        return CCopPed::GetPedModelForCopType((eCopType)(typeOrModelID));
+    default:
+        return (eModelID)(typeOrModelID); /* A modelID was passed in */
     }
 }
 
@@ -229,12 +245,9 @@ void CCopPed::ClearCriminalsToKill() {
 }
 
 // 0x5DE160
-void CCopPed::ProcessControl() {
-    ProcessControl_Reversed();
-}
 
 // 0x5DE160
-void CCopPed::ProcessControl_Reversed() {
+void CCopPed::ProcessControl() {
     if (FindPlayerWanted()->GetWantedLevel() != 0) {
         if (GetIntelligence()->GetPedDecisionMakerType() == eDecisionMakerEvents::DM_EVENT_PED_ENTERED_MY_VEHICLE)
         {
@@ -256,7 +269,7 @@ void CCopPed::ProcessControl_Reversed() {
         return;
 
     if (m_pTargetedObject)
-        Say(220);
+        Say(CTX_GLOBAL_TARGET);
 
     if (!field_79D)
         return;

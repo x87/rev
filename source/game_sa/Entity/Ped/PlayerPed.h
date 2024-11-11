@@ -33,13 +33,12 @@ public:
 
     CPlayerPed(int32 playerId, bool bGroupCreated);
 
-    bool Load_Reversed();
-    bool Save_Reversed();
 
+    void ProcessControl() override;
     bool Load() override;
     bool Save() override;
 
-    CPad* GetPadFromPlayer();
+    CPad* GetPadFromPlayer() const;
     bool CanPlayerStartMission();
     bool IsHidden();
     void ReApplyMoveAnims();
@@ -54,7 +53,7 @@ public:
     void Clear3rdPersonMouseTarget();
     // GetWanted()->m_nWantedLevel = 0;
     void Busted();
-    uint32 GetWantedLevel();
+    uint32 GetWantedLevel() const;
     void SetWantedLevel(int32 level);
     void SetWantedLevelNoDrop(int32 level);
     void CheatWantedLevel(int32 level);
@@ -69,7 +68,7 @@ public:
     void MakePlayerGroupDisappear();
     void MakePlayerGroupReappear();
     void ResetSprintEnergy();
-    bool HandleSprintEnergy(bool arg0, float arg1);
+    bool HandleSprintEnergy(bool sprint, float adrenalineConsumedPerTimeStep);
     float ControlButtonSprint(eSprintType sprintType);
     float GetButtonSprintResults(eSprintType sprintType);
     void ResetPlayerBreath();
@@ -102,6 +101,10 @@ public:
         return m_pPlayerData ? m_pPlayerData->m_pWanted : nullptr;
     }
 
+    inline const CWanted* GetWanted() const {
+        return m_pPlayerData ? m_pPlayerData->m_pWanted : nullptr;
+    }
+
     static void RemovePlayerPed(int32 playerId);
     static void DeactivatePlayerPed(int32 playerId);
     static void ReactivatePlayerPed(int32 playerId);
@@ -109,8 +112,7 @@ public:
     static void SetupPlayerPed(int playerId);
 
     // NOTSA
-    CPedGroup& GetGroup() const noexcept { return CPedGroups::GetGroup(m_pPlayerData->m_nPlayerGroup); }
-    CPedGroupMembership& GetGroupMembership() const noexcept { return GetGroup().GetMembership(); }
+    CPedGroup& GetPlayerGroup() const noexcept { return CPedGroups::GetGroup(m_pPlayerData->m_nPlayerGroup); }
 };
 
 VALIDATE_SIZE(CPlayerPed, 0x7A4);

@@ -30,7 +30,7 @@ function(supress_deps_warnings targets)
         )
     endforeach()
 endfunction()
-supress_deps_warnings(ogg imgui vorbisfile)
+supress_deps_warnings(ogg imgui vorbisfile spdlog nlohmann_json)
 
 set_target_properties(${RE_PROJECT_LIB_NAME}
     PROPERTIES
@@ -38,6 +38,7 @@ set_target_properties(${RE_PROJECT_LIB_NAME}
     ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}/"
     LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}/"
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE}/"
+    COMPILE_WARNING_AS_ERROR ON
 )
 if (${RE_PROJECT}_UNITY_BUILD)
     set_target_properties(${RE_PROJECT_LIB_NAME}
@@ -58,11 +59,33 @@ if (${RE_PROJECT}_WITH_SANITIZERS)
     # add_sanitizers(${RE_PROJECT_LIB_NAME})
 endif()
 
+target_link_options(${RE_PROJECT_LIB_NAME} PRIVATE "/SUBSYSTEM:WINDOWS" "/SAFESEH")
+
 target_link_libraries(${RE_PROJECT_LIB_NAME} PRIVATE
     ogg
     vorbisfile
     imgui
+    spdlog
+    Tracy::TracyClient
+    ddraw
+    Winmm
+    dxguid
+    strmiids
+    dsound
+    d3d9
+    nlohmann_json
 )
+
+if(WIN32) 
+    if(MSVC) # MSVC knows how to find dbghelp on it's own
+        target_link_libraries(${RE_PROJECT_LIB_NAME} PRIVATE
+            dbghelp
+        )
+    else()
+        message(FATAL_ERROR "Need to link dbghelp lib for win32")
+    endif()
+endif()
+
 target_include_directories(${RE_PROJECT_LIB_NAME} PRIVATE
     /
     toolsmenu/
@@ -95,6 +118,7 @@ target_include_directories(${RE_PROJECT_LIB_NAME} PRIVATE
     game_sa/Interior/
     game_sa/Memory/
     game_sa/Models/
+    game_sa/Plant/
     game_sa/Plugins/
     game_sa/Pipelines/
     game_sa/Pipelines/CustomBuilding
@@ -104,7 +128,7 @@ target_include_directories(${RE_PROJECT_LIB_NAME} PRIVATE
     game_sa/Scripts/
     game_sa/Tasks/
     game_sa/Tasks/TaskTypes/
-    game_sa/Tasks/TaskTypes/SeekPosCalculators/
+    game_sa/Tasks/TaskTypes/SeekEntity/
 
     app/
     app/platform/
@@ -122,6 +146,7 @@ target_compile_definitions(${RE_PROJECT_LIB_NAME} PRIVATE
     USE_GTASA_ALLOCATOR
     EXTRA_DEBUG_FEATURES
     FIX_BUGS
+    SA_SKINNED_PEDS
 )
 target_compile_features(${RE_PROJECT_LIB_NAME} PRIVATE cxx_std_23)
 target_precompile_headers(${RE_PROJECT_LIB_NAME} PRIVATE StdInc.cpp)

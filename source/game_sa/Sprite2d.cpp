@@ -36,8 +36,8 @@ void CSprite2d::InjectHooks() {
     RH_ScopedOverloadedInstall(SetVertices, "CRectCRGBA4", 0x727420, void(*)(const CRect&, const CRGBA&, const CRGBA&, const CRGBA&, const CRGBA&));
     RH_ScopedOverloadedInstall(SetVertices, "ffffffffCRGBA", 0x727590, void(*)(float, float, float, float, float, float, float, float, const CRGBA&, const CRGBA&, const CRGBA&, const CRGBA&));
     RH_ScopedOverloadedInstall(SetVertices, "CRectCRGBA4ffffffff", 0x727710, void(*)(const CRect&, const CRGBA&, const CRGBA&, const CRGBA&, const CRGBA&, float, float, float, float, float, float, float, float));
-    RH_ScopedOverloadedInstall(SetVertices, "iffCRGBA", 0x727890, void(*)(int32, float*, float*, const CRGBA&));
-    RH_ScopedOverloadedInstall(SetVertices, "ifCRGBA", 0x727920, void(*)(int32, float*, CRGBA*));
+    RH_ScopedOverloadedInstall(SetVertices, "iffCRGBA", 0x727890, void(*)(int32, const CVector2D*, const CVector2D*, const CRGBA&));
+    RH_ScopedOverloadedInstall(SetVertices, "ifCRGBA", 0x727920, void(*)(int32, const CVector2D*, const CRGBA&));
     RH_ScopedInstall(SetMaskVertices, 0x7279B0);
     RH_ScopedOverloadedInstall(SetVertices, "RwD3D9Vertex", 0x727A00, void(*)(RwD3D9Vertex*, const CRect&, const CRGBA&, const CRGBA&, const CRGBA&, const CRGBA&, float, float, float, float, float, float, float, float));
     RH_ScopedOverloadedInstall(DrawRect, "CRGBA", 0x727B60, void(*)(const CRect&, const CRGBA&));
@@ -47,7 +47,7 @@ void CSprite2d::InjectHooks() {
     RH_ScopedInstall(DrawAnyRect, 0x727CC0);
     RH_ScopedInstall(Draw2DPolygon, 0x7285B0);
     RH_ScopedInstall(DrawBarChart, 0x728640);
-    // RH_ScopedInstall(DrawCircleAtNearClip, 0x727D60);
+    RH_ScopedInstall(DrawCircleAtNearClip, 0x727D60, { .reversed = false });
 }
 
 CSprite2d::CSprite2d()
@@ -169,13 +169,14 @@ void CSprite2d::Draw(float x1, float y1, float x2, float y2, float x3, float y3,
 }
 
 // 0x727260
-void CSprite2d::SetRecipNearClip()
-{
+void CSprite2d::SetRecipNearClip() {
+    ZoneScoped;
     // NOP
 }
 
-void CSprite2d::InitPerFrame()
-{
+void CSprite2d::InitPerFrame() {
+    ZoneScoped;
+
     nextBufferVertex = 0;
     nextBufferIndex = 0;
     RecipNearClip = 1.0f / RwCameraGetNearClipPlane(Scene.m_pRwCamera);
@@ -255,41 +256,37 @@ void CSprite2d::SetVertices(const CRect& posn, const CRGBA& color1, const CRGBA&
     SetVertices(maVertices, posn, color1, color2, color3, color4, u1, v1, u2, v2, u3, v3, u4, v4);
 }
 
-// Clang-Tidy: Pointer parameter 'posn' can be pointer to const
-// Clang-Tidy: Pointer parameter 'texCoors' can be pointer to const
-void CSprite2d::SetVertices(int32 numVerts, float* posn, float* texCoors, const CRGBA& color)
+void CSprite2d::SetVertices(int32 numVerts, const CVector2D* posn, const CVector2D* texCoors, const CRGBA& color)
 {
     for (int32 i = 0; i < numVerts; ++i) {
-        RwIm2DVertexSetScreenX(&maVertices[i], posn[i * 2]);
-        RwIm2DVertexSetScreenY(&maVertices[i], posn[i * 2 + 1]);
+        RwIm2DVertexSetScreenX(&maVertices[i], posn[i].x);
+        RwIm2DVertexSetScreenY(&maVertices[i], posn[i].y);
         RwIm2DVertexSetScreenZ(&maVertices[i], NearScreenZ + 0.0001f);
         RwIm2DVertexSetRecipCameraZ(&maVertices[i], RecipNearClip);
-        RwIm2DVertexSetU(&maVertices[i], texCoors[i * 2], RecipNearClip);
-        RwIm2DVertexSetV(&maVertices[i], texCoors[i * 2 + 1], RecipNearClip);
+        RwIm2DVertexSetU(&maVertices[i], texCoors[i].x, RecipNearClip);
+        RwIm2DVertexSetV(&maVertices[i], texCoors[i].y, RecipNearClip);
         RwIm2DVertexSetIntRGBA(&maVertices[i], color.r, color.g, color.b, color.a);
     }
 }
 
-// Clang-Tidy: Pointer parameter 'posn' can be pointer to const
-void CSprite2d::SetVertices(int32 numVerts, float* posn, CRGBA* color)
+void CSprite2d::SetVertices(int32 numVerts, const CVector2D* posn, const CRGBA& color)
 {
     for (int32 i = 0; i < numVerts; ++i) {
-        RwIm2DVertexSetScreenX(&maVertices[i], posn[i * 2]);
-        RwIm2DVertexSetScreenY(&maVertices[i], posn[i * 2 + 1]);
+        RwIm2DVertexSetScreenX(&maVertices[i], posn[i].x);
+        RwIm2DVertexSetScreenY(&maVertices[i], posn[i].y);
         RwIm2DVertexSetScreenZ(&maVertices[i], NearScreenZ);
         RwIm2DVertexSetRecipCameraZ(&maVertices[i], RecipNearClip);
         RwIm2DVertexSetU(&maVertices[i], 1.f, RecipNearClip);
         RwIm2DVertexSetV(&maVertices[i], 1.f, RecipNearClip);
-        RwIm2DVertexSetIntRGBA(&maVertices[i], color[i].r, color[i].g, color[i].b, color[i].a);
+        RwIm2DVertexSetIntRGBA(&maVertices[i], color.r, color.g, color.b, color.a);
     }
 }
 
-// Clang-Tidy: Pointer parameter 'posn' can be pointer to const
-void CSprite2d::SetMaskVertices(int32 numVerts, float* posn, float depth)
+void CSprite2d::SetMaskVertices(int32 numVerts, const CVector2D* posn, float depth)
 {
     for (int32 i = 0; i < numVerts; ++i) {
-        RwIm2DVertexSetScreenX(&maVertices[i], posn[i * 2]);
-        RwIm2DVertexSetScreenY(&maVertices[i], posn[i * 2 + 1]);
+        RwIm2DVertexSetScreenX(&maVertices[i], posn[i].x);
+        RwIm2DVertexSetScreenY(&maVertices[i], posn[i].y);
         RwIm2DVertexSetScreenZ(&maVertices[i], depth);
         RwIm2DVertexSetRecipCameraZ(&maVertices[i], RecipNearClip);
         RwIm2DVertexSetIntRGBA(&maVertices[i], 0, 0, 0, 0);
@@ -300,7 +297,7 @@ void CSprite2d::SetVertices(RwIm2DVertex* vertices, const CRect& posn, const CRG
     float u1, float v1, float u2, float v2, float u3, float v3, float u4, float v4)
 {
     RwIm2DVertexSetScreenX(&vertices[0], posn.left);
-    RwIm2DVertexSetScreenY(&vertices[0], posn.top);
+    RwIm2DVertexSetScreenY(&vertices[0], posn.bottom);
     RwIm2DVertexSetScreenZ(&vertices[0], NearScreenZ);
     RwIm2DVertexSetRecipCameraZ(&vertices[0], RecipNearClip);
     RwIm2DVertexSetU(&vertices[0], u1, RecipNearClip);
@@ -308,7 +305,7 @@ void CSprite2d::SetVertices(RwIm2DVertex* vertices, const CRect& posn, const CRG
     RwIm2DVertexSetIntRGBA(&vertices[0], color3.r, color3.g, color3.b, color3.a);
 
     RwIm2DVertexSetScreenX(&vertices[1], posn.right);
-    RwIm2DVertexSetScreenY(&vertices[1], posn.top);
+    RwIm2DVertexSetScreenY(&vertices[1], posn.bottom);
     RwIm2DVertexSetScreenZ(&vertices[1], NearScreenZ);
     RwIm2DVertexSetRecipCameraZ(&vertices[1], RecipNearClip);
     RwIm2DVertexSetU(&vertices[1], u2, RecipNearClip);
@@ -316,7 +313,7 @@ void CSprite2d::SetVertices(RwIm2DVertex* vertices, const CRect& posn, const CRG
     RwIm2DVertexSetIntRGBA(&vertices[1], color4.r, color4.g, color4.b, color4.a);
 
     RwIm2DVertexSetScreenX(&vertices[2], posn.right);
-    RwIm2DVertexSetScreenY(&vertices[2], posn.bottom);
+    RwIm2DVertexSetScreenY(&vertices[2], posn.top);
     RwIm2DVertexSetScreenZ(&vertices[2], NearScreenZ);
     RwIm2DVertexSetRecipCameraZ(&vertices[2], RecipNearClip);
     RwIm2DVertexSetU(&vertices[2], u4, RecipNearClip);
@@ -324,7 +321,7 @@ void CSprite2d::SetVertices(RwIm2DVertex* vertices, const CRect& posn, const CRG
     RwIm2DVertexSetIntRGBA(&vertices[2], color2.r, color2.g, color2.b, color2.a);
 
     RwIm2DVertexSetScreenX(&vertices[3], posn.left);
-    RwIm2DVertexSetScreenY(&vertices[3], posn.bottom);
+    RwIm2DVertexSetScreenY(&vertices[3], posn.top);
     RwIm2DVertexSetScreenZ(&vertices[3], NearScreenZ);
     RwIm2DVertexSetRecipCameraZ(&vertices[3], RecipNearClip);
     RwIm2DVertexSetU(&vertices[3], u3, RecipNearClip);
@@ -496,7 +493,7 @@ void CSprite2d::DrawBarChart(float x, float y, uint16 width, uint8 height, float
     // unused
     if (drawPercentage) {
         char text[12];
-        sprintf(text, "%d%%", (int)progress);
+        sprintf_s(text, "%d%%", (int)progress);
 
         GxtChar gxtText[12];
         AsciiToGxtChar(text, gxtText);

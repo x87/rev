@@ -6,13 +6,17 @@
 */
 #pragma once
 
+#include "app/app_debug.h"
+#include <rw/rwplcore.h>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
 #define PLUGIN_API
 
 #define VALIDATE_SIZE(struc, size) static_assert(sizeof(struc) == size, "Invalid structure size of " #struc)
 #define VALIDATE_OFFSET(struc, member, offset) \
 	static_assert(offsetof(struc, member) == offset, "The offset of " #member " in " #struc " is not " #offset "...")
-
-
 
 VALIDATE_SIZE(bool, 1);
 VALIDATE_SIZE(char, 1);
@@ -40,10 +44,12 @@ typedef uint8     bool8;
 typedef uint16    bool16;
 typedef uint32    bool32;
 
-#if __has_builtin(__builtin_unreachable)
+#if (defined(__GNUC__) || defined(__GNUG__) || defined(__clang__))
 #define UNREACHABLE_INTRINSIC(...) __builtin_unreachable()
-#else
+#elif (defined(_MSC_VER))
 #define UNREACHABLE_INTRINSIC(...) __assume(false)
+#else
+#define UNREACHABLE_INTRINSIC(...) assert(false)
 #endif
 
 // Use the `NOTSA_UNREACHABLE` macro for unreachable code paths.
@@ -53,13 +59,28 @@ typedef uint32    bool32;
 #if _DEBUG
 #include <format>
 #include <winuser.h>
+#include <filesystem>
 
 namespace notsa {
+namespace fs = std::filesystem;
+static const fs::path SOURCE_PATH = fs::path(__FILE__).parent_path();
+
 template<typename... Ts>
-[[noreturn]] static void unreachable(const char* method, const char* file, unsigned line, std::string_view fmt = "", Ts&&... fmtArgs) {
-    const auto userDetails = std::vformat(fmt, std::make_format_args(std::forward<Ts>(fmtArgs)...));
-    const auto mbMsg = std::format("File:\n{}\n\nIn:\n{}:{}\n\nDetails:\n{}", file, method, line, userDetails.empty() ? "<None provided>" : userDetails.c_str());
-        
+[[noreturn]] static void unreachable(std::string_view method, std::string_view file, unsigned line, std::string userDetails = "<None provided>") {
+    const auto mbMsg = std::format(
+        "File: {}\nIn: {}:{}\n\nDetails:\n{}",
+        fs::relative(file, SOURCE_PATH).string(),
+        method,
+        line,
+        userDetails
+    );
+
+    spdlog::error(mbMsg);
+    spdlog::dump_backtrace();
+    spdlog::apply_all([](std::shared_ptr<spdlog::logger> l) { // Flush all sinks immidiately
+        l->flush();
+    });
+
     const auto result = MessageBox(
         NULL,
         mbMsg.c_str(),
@@ -85,9 +106,16 @@ template<typename... Ts>
 // TODO/NOTE: We might need to manually suppress warnings here?
 // Since all the code here is perfectly valid, so the compiler might
 // still complain that, for example, the function doesn't return on all code paths, etc
-#define NOTSA_UNREACHABLE(...) do { notsa::unreachable(__FUNCTION__, __FILE__, __LINE__ __VA_OPT__(,) ##__VA_ARGS__); } while (false)
+#define IMPL_NOTSA_UNREACHABLE_FMT_ARGS(...) std::format(__VA_ARGS__)
+#define NOTSA_UNREACHABLE(...) do { notsa::unreachable(__FUNCTION__, __FILE__, __LINE__ __VA_OPT__(,IMPL_NOTSA_UNREACHABLE_FMT_ARGS(__VA_ARGS__))); } while (false)
 #else 
 #define NOTSA_UNREACHABLE(...) UNREACHABLE_INTRINSIC()
+#endif
+
+#ifdef _DEBUG
+#define NOTSA_DEBUG_BREAK() __debugbreak()
+#else
+#define NOTSA_DEBUG_BREAK()
 #endif
 
 // In order to be able to get the vtable address using GetProcAddress
@@ -103,8 +131,70 @@ template<typename... Ts>
 // Eventually could instead verify the returned value? In case of `sscanf` etc...
 #define RET_IGNORED(x) (void)(x);
 
+//! Cause a debug break
+#define NOTSA_DEBUGBREAK() __debugbreak()
+
+//! switch case fallthru
+#define NOTSA_SWCFALLTHRU [[fallthrough]]
+
+//! Macro for passing a string var to *scanf_s function.
+#define SCANF_S_STR(s) s, std::size(s)
+
+#define NOTSA_FORCEINLINE __forceinline
+
+/*!
+* @brief Used for static variable references
+*
+* @tparam T    The type of the variable
+* @param Addr  The address of it
+*/
+template<typename T>
+T& StaticRef(uintptr addr) {
+    return *reinterpret_cast<T*>(addr);
+}
+
+/*!
+ * @brief Use for scoped static variables (That is, static variables that are initialized in functions)
+ * @brief See `CAEGlobalWeaponAudioEntity::ServiceAmbientGunFire` for examples)
+ * @tparam T The type of the var
+ * @param varAddr 
+ * @param flagsAddr 
+ * @param flagsMask 
+ * @param initVal 
+ * @return 
+ */
+template<typename T>
+T& ScopedStaticRef(uintptr varAddr, uintptr flagsAddr, uint32 flagsMask, T&& initVal) {
+    auto& var   = StaticRef<T>(varAddr);
+    auto& flags = StaticRef<uint32>(flagsAddr);
+    if (!(flags & flagsMask)) {
+        flags |= flagsMask;
+        var    = initVal;
+    }
+    return var;
+}
+
+// TODO: Replace this with the one above
+template<typename T, uintptr Addr>
+T& StaticRef() {
+    return StaticRef<T>(Addr);
+}
+
+template<typename T>
+void SAFE_RELEASE(T*& ptr) { // DirectX stuff `Release()`
+    if (ptr) {
+        ptr->Release();
+        ptr = nullptr;
+    }
+}
+
 #define _IGNORED_
 #define _CAN_BE_NULL_
+
+// TODO: Use premake/cmake for this instead of relaying on `_DEBUG`
+#ifdef _DEBUG
+#define NOTSA_DEBUG 1
+#endif
 
 #if (defined(__GNUC__) || defined(__GNUG__) || defined(__clang__))
 #define PLUGIN_SOURCE_FILE
@@ -127,3 +217,5 @@ template<typename... Ts>
 #define _SWSTRING_STATIC(id) my_ws##id
 #define _SWSTRING_STATIC_FROM(id, src) for (size_t i = 0; i < strlen(src); i++) my_ws##id[i] = src[i]
 #define _SWSTRING_STATIC_TO(id, dst) for (size_t i = 0; i < wcslen(my_ws##id); i++) dst[i] = static_cast<char>(my_ws##id[i])
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RwRGBAReal, red, blue, green, alpha);

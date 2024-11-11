@@ -15,6 +15,7 @@
 #include "Shadows.h"
 #include "CustomBuildingDNPipeline.h"
 #include "VehicleRecording.h"
+#include "Garages.h"
 
 int32& CWorld::ms_iProcessLineNumCrossings = *(int32*)0xB7CD60;
 float& CWorld::fWeaponSpreadRate = *(float*)0xB7CD64;
@@ -115,7 +116,7 @@ void CWorld::InjectHooks() {
     RH_ScopedInstall(SetWorldOnFire, 0x56B910);
     RH_ScopedInstall(SetAllCarsCanBeDamaged, 0x5668F0);
 
-    // RH_ScopedInstall(CallOffChaseForAreaSectorListVehicles, 0x563A80);
+    RH_ScopedInstall(CallOffChaseForAreaSectorListVehicles, 0x563A80, { .reversed = false });
     RH_ScopedInstall(RemoveEntityInsteadOfProcessingIt, 0x563A10);
     RH_ScopedOverloadedInstall(TestForUnusedModels, "InputArray", 0x5639D0, void(*)(CPtrList&, int32*));
     RH_ScopedOverloadedInstall(TestForBuildingsOnTopOfEachOther, "", 0x563950, void(*)(CPtrList&));
@@ -153,6 +154,8 @@ void CWorld::ResetLineTestOptions() {
 
 // 0x5631E0
 void CWorld::Initialise() {
+    ZoneScoped;
+
     bDoingCarCollisions    = false;
     bNoMoreCollisionTorque = false;
     bIncludeDeadPeds       = false;
@@ -178,7 +181,11 @@ void CWorld::Add(CEntity* entity) {
     }
 }
 
-// 0x563280
+/*!
+* @brief Remove ped from the world.
+* Caller still has to `delete` the entity. (In case they want to delete it, and not just re-add)
+* In case of peds `CPopulation::RemovePed` should be used instead.
+*/
 void CWorld::Remove(CEntity* entity) {
     entity->Remove();
     if (entity->IsPhysical())
@@ -249,6 +256,8 @@ void CWorld::ProcessForAnimViewer() {
 
 // 0x563430
 void CWorld::ProcessPedsAfterPreRender() {
+    ZoneScoped;
+
     if (CTimer::bSkipProcessThisFrame)
         return;
 
@@ -472,8 +481,8 @@ void CWorld::CallOffChaseForAreaSectorListPeds(CPtrList& ptrList, float x1, floa
         next = node->GetNext();
 
         const auto veh = static_cast<CVehicle*>(node->m_item);
-        const auto pos = veh->GetPosition();
-        const auto mat = (CMatrix)veh->GetMatrix();
+        const auto& pos = veh->GetPosition();
+        const auto& mat = veh->GetMatrix();
 
         if (!IsPointWithinBounds2D({ minX, minY }, { maxX, maxY }, { pos }))
             continue;
@@ -500,7 +509,7 @@ void CWorld::CallOffChaseForAreaSectorListPeds(CPtrList& ptrList, float x1, floa
             for (auto i = 0; i < colData->m_nNumSpheres; i++) {
                 const auto& sphere    = colData->m_pSpheres[i];
                 const auto  radius    = sphere.m_fRadius;
-                const auto  spherePos = MultiplyMatrixWithVector(mat, sphere.m_vecCenter);
+                const auto  spherePos = mat.TransformPoint(sphere.m_vecCenter);
                 if (   (spherePos.x + radius > x1 && spherePos.x - radius < x2)
                     && (spherePos.y + radius > y1 && spherePos.y - radius < y2)
                 ) {
@@ -543,7 +552,7 @@ bool CWorld::CameraToIgnoreThisObject(CEntity* entity) {
     }
 }
 
-// Returns player ID (0 or 1), -1 - not found
+// Returns p ID (0 or 1), -1 - not found
 // 0x563FA0
 int32 CWorld::FindPlayerSlotWithPedPointer(void* ped) {
     for (int32 i = 0; i < MAX_PLAYERS; i++) {
@@ -553,7 +562,7 @@ int32 CWorld::FindPlayerSlotWithPedPointer(void* ped) {
     return -1;
 }
 
-// Returns player ID (0 or 1), -1 - not found
+// Returns p ID (0 or 1), -1 - not found
 // 0x563FD0
 int32 CWorld::FindPlayerSlotWithRemoteVehiclePointer(void* vehicle) {
     for (int32 i = 0; i < MAX_PLAYERS; i++) {
@@ -563,7 +572,7 @@ int32 CWorld::FindPlayerSlotWithRemoteVehiclePointer(void* vehicle) {
     return -1;
 }
 
-// Returns player ID (0 or 1), -1 - not found
+// Returns p ID (0 or 1), -1 - not found
 // 0x564000
 int32 CWorld::FindPlayerSlotWithVehiclePointer(CEntity* vehiclePtr) {
     for (int32 i = 0; i < MAX_PLAYERS; i++) {
@@ -625,10 +634,10 @@ void CWorld::ShutDown() {
     {
         const auto MakeSureListIsEmpty = [](CPtrListDoubleLink& list, int32 x, int32 y, const char* listName) {
             if (!list.IsEmpty()) {
-                sprintf(gString, "%s overlap list %d,%d not empty\n", listName, x, y);
+                sprintf_s(gString, "%s overlap list %d,%d not empty\n", listName, x, y);
                 list.Flush();
             #ifdef _DEBUG
-                printf("%s", gString); // Lets also print this string
+                DEV_LOG(gString); // Lets also print this string
             #endif
             }
         };
@@ -646,8 +655,9 @@ void CWorld::ShutDown() {
 
 // 0x564360
 void CWorld::ClearForRestart() {
-    if (CCutsceneMgr::ms_cutsceneLoadStatus == 2)
+    if (CCutsceneMgr::HasLoaded()) {
         CCutsceneMgr::DeleteCutsceneData();
+    }
 
     CProjectileInfo::RemoveAllProjectiles();
     CObject::DeleteAllTempObjects();
@@ -779,22 +789,17 @@ bool CWorld::GetIsLineOfSightSectorListClear(CPtrList& ptrList, const CColLine& 
 
 // 0x564A20
 void CWorld::FindObjectsInRange(const CVector& point, float radius, bool b2D, int16* outCount, int16 maxCount, CEntity** outEntities, bool buildings, bool vehicles, bool peds, bool objects, bool dummies) {
-    const int32 startSectorX = GetSectorX(point.x - radius);
-    const int32 startSectorY = GetSectorY(point.y - radius);
-    const int32 endSectorX = GetSectorX(point.x + radius);
-    const int32 endSectorY = GetSectorY(point.y + radius);
-
     IncrementCurrentScanCode();
-
     *outCount = 0;
-    for (int32 sectorY = startSectorY; sectorY <= endSectorY; ++sectorY) {
-        for (int32 sectorX = startSectorX; sectorX <= endSectorX; ++sectorX) {
+    IterateSectorsOverlappedByRect(
+        { point, radius },
+        [&](int32 x, int32 y) {
             const auto ProcessSector = [&](CPtrList& list) {
                 FindObjectsInRangeSectorList(list, point, radius, b2D, outCount, maxCount, outEntities);
             };
 
-            auto sector = GetSector(sectorX, sectorY);
-            auto repeatSector = GetRepeatSector(sectorX, sectorY);
+            auto sector = GetSector(x, y);
+            auto repeatSector = GetRepeatSector(x, y);
 
             if (buildings)
                 ProcessSector(sector->m_buildings);
@@ -806,8 +811,10 @@ void CWorld::FindObjectsInRange(const CVector& point, float radius, bool b2D, in
                 ProcessSector(repeatSector->GetList(REPEATSECTOR_OBJECTS));
             if (dummies)
                 ProcessSector(sector->m_dummies);
+
+            return true;
         }
-    }
+    );
 }
 
 // 0x564C70
@@ -865,6 +872,11 @@ void CWorld::FindObjectsKindaCollidingSectorList(CPtrList& ptrList, const CVecto
     for (CPtrNode* it = ptrList.m_node, *next{}; it; it = next) {
         next = it->GetNext();
 
+        // NOTSA: If we can't store more entities there's no point in trying
+        if (*outCount >= maxCount) {
+            return;
+        }
+
         auto entity = static_cast<CEntity*>(it->m_item);
         if (entity->IsScanCodeCurrent())
             continue;
@@ -880,11 +892,10 @@ void CWorld::FindObjectsKindaCollidingSectorList(CPtrList& ptrList, const CVecto
                 continue;
         }
 
-        if (*outCount < maxCount) {
-            if (outEntities)
-                outEntities[*outCount] = entity;
-            ++*outCount;
-        }
+        // NOTSA: `outCount` checked above already
+        if (outEntities)
+            outEntities[*outCount] = entity;
+        ++*outCount;
     }
 }
 
@@ -938,8 +949,8 @@ void CWorld::FindObjectsIntersectingAngledCollisionBoxSectorList(CPtrList& ptrLi
         entity->SetCurrentScanCode();
 
         CColSphere sphere{
-            entity->GetColModel()->GetBoundRadius(),
-            Multiply3x3(entity->GetPosition() - point, transform)
+            transform.InverseTransformVector(entity->GetPosition() - point),
+            entity->GetColModel()->GetBoundRadius()
         };
         if (CCollision::TestSphereBox(sphere, box)) {
             if (*outCount < maxCount) {
@@ -994,7 +1005,9 @@ void CWorld::FindMissionEntitiesIntersectingCubeSectorList(CPtrList& ptrList, co
 }
 
 // 0x565450
-void CWorld::FindNearestObjectOfTypeSectorList(int32 modelId, CPtrList& ptrList, const CVector& point, float radius, bool b2D, CEntity *& outEntity, float& outDistance) {
+void CWorld::FindNearestObjectOfTypeSectorList(int32 modelId, CPtrList& ptrList, const CVector& point, float radius, bool b2D, CEntity *& outNearestEntity, float& outNearestDist) {
+    UNUSED(modelId);
+
     for (CPtrNode* node = ptrList.GetNode(), *next{}; node; node = next) {
         next = node->GetNext();
 
@@ -1012,8 +1025,8 @@ void CWorld::FindNearestObjectOfTypeSectorList(int32 modelId, CPtrList& ptrList,
         };
 
         if (const float dist = GetDistance(); dist <= radius) {
-            outDistance = dist;
-            outEntity   = entity;
+            outNearestDist   = dist;
+            outNearestEntity = entity;
         }
     }
 }
@@ -1188,9 +1201,9 @@ void CWorld::RemoveFallenPeds() {
         if (vecPedPos.z > MAP_Z_LOW_LIMIT)
             continue;
         if (!ped->IsCreatedBy(ePedCreatedBy::PED_GAME) || ped->IsPlayer()) {
-            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPedPos, 1, 1000000.0f, 0, 0, 0, 0, 0);
-            if (pathNodeAddress.IsAreaValid()) {
-                CVector pathNodePos = ThePaths.GetPathNode(pathNodeAddress)->GetNodeCoors();
+            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPedPos, PATH_TYPE_PED, 1000000.0f, 0, 0, 0, 0, 0);
+            if (pathNodeAddress.IsValid()) {
+                CVector pathNodePos = ThePaths.GetPathNode(pathNodeAddress)->GetPosition();
                 pathNodePos.z += 2.0f;
                 ped->Teleport(pathNodePos, false);
             } else
@@ -1223,9 +1236,9 @@ void CWorld::RemoveFallenCars() {
         };
 
         if (ShouldWeKeepIt()) {
-            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPos, 1, 1000000.0f, 0, 0, 0, 0, 0);
-            if (pathNodeAddress.IsAreaValid()) {
-                const auto pathNodePos = ThePaths.GetPathNode(pathNodeAddress)->GetNodeCoors();
+            CNodeAddress pathNodeAddress = ThePaths.FindNodeClosestToCoors(vecPos, PATH_TYPE_PED, 1000000.0f, 0, 0, 0, 0, 0);
+            if (pathNodeAddress.IsValid()) {
+                const auto pathNodePos = ThePaths.GetPathNode(pathNodeAddress)->GetPosition();
                 vehicle->Teleport(pathNodePos + CVector(0, 0, 3), true);
             } else
                 vehicle->Teleport(CVector(vecPos.x, vecPos.y, 0), true);
@@ -1305,12 +1318,12 @@ CEntity* CWorld::TestSphereAgainstSectorList(CPtrList& ptrList, CVector sphereCe
             continue; // Bound spheres not colliding
 
         if (CCollision::ProcessColModels(sphereMatrix, sphereColModel, entity->GetMatrix(), entityColModel, gaTempSphereColPoints, nullptr, nullptr, false)) {
-            sphereColModel.m_pColData = nullptr; // Make sure CColModel destructor doesn't try our local variable
+            sphereColModel.m_pColData = nullptr; // Make sure CColModel destructor doesn't try to delete our local variable
             return entity;
         }
     }
 
-    sphereColModel.m_pColData = nullptr; // Make sure CColModel destructor doesn't try our local variable
+    sphereColModel.m_pColData = nullptr; // Make sure CColModel destructor doesn't try to delete our local variable
     return nullptr;
 }
 
@@ -1332,7 +1345,7 @@ void CWorld::PrintCarChanges() {
 
         auto prevModelIndex = s_aModelIndexes[poolSize];
         if (modelIndex != prevModelIndex) {
-            printf("Car ModelIndex (slot:%d) has changed from %d into %d\n", poolSize, prevModelIndex, modelIndex);
+            DEV_LOG("Car ModelIndex (slot: {}) has changed from {} into {}", poolSize, prevModelIndex, modelIndex);
             s_aModelIndexes[poolSize] = modelIndex;
         }
     }
@@ -1384,7 +1397,7 @@ void CWorld::ClearCarsFromArea(float minX, float minY, float minZ, float maxX, f
         if (!veh)
             continue;
 
-        if (FindPlayerPed()->m_pContactEntity == veh && veh->IsBoat())
+        if (veh->IsBoat() && FindPlayerPed()->m_pContactEntity == veh)
             continue;
 
         if (!box.IsPointWithin(veh->GetPosition()))
@@ -1393,26 +1406,7 @@ void CWorld::ClearCarsFromArea(float minX, float minY, float minZ, float maxX, f
         if (veh->vehicleFlags.bIsLocked || !veh->CanBeDeleted())
             continue;
 
-        { // see ClearExcitingStuffFromArea | inlined
-        if (auto& driver = veh->m_pDriver) {
-            CPopulation::RemovePed(driver);
-            CEntity::ClearReference(driver); // Not even sure why this is done - Ped::Remove already unlinks it from the vehicle it's in
-        }
-
-        for (const auto passenger : veh->GetPassengers()) {
-            if (passenger) {
-                veh->RemovePassenger(passenger);
-                CPopulation::RemovePed(passenger);
-            }
-        }
-
-        if (CCarCtrl::IsThisVehicleInteresting(veh))
-            CGarages::StoreCarInNearestImpoundingGarage(veh);
-
-        CCarCtrl::RemoveFromInterestingVehicleList(veh);
-        Remove(veh);
-        delete veh;
-        }
+        RemoveVehicleAndItsOccupants(veh);
     }
 }
 
@@ -1452,20 +1446,17 @@ void CWorld::ExtinguishAllCarFiresInArea(CVector point, float radius) {
 
 // 0x566A60
 void CWorld::CallOffChaseForArea(float minX, float minY, float maxX, float maxY) {
-    const int32 startSectorX = GetSectorX(minX - 10.f);
-    const int32 startSectorY = GetSectorY(minY - 10.f);
-    const int32 endSectorX = GetSectorX(maxX + 10.f);
-    const int32 endSectorY = GetSectorY(maxY + 10.f);
-
     IncrementCurrentScanCode();
 
-    for (int32 sectorY = startSectorY; sectorY <= endSectorY; ++sectorY) {
-        for (int32 sectorX = startSectorX; sectorX <= endSectorX; ++sectorX) {
-            CRepeatSector* sector = GetRepeatSector(sectorX, sectorY);
+    IterateSectorsOverlappedByRect(
+        { minX - 10.f, minY - 10.f, maxX + 10.f, maxY + 10.f },
+        [&](int32 x, int32 y) {
+            CRepeatSector* sector = GetRepeatSector(x, y);
             CallOffChaseForAreaSectorListVehicles(sector->GetList(REPEATSECTOR_VEHICLES), minX, minY, maxX, maxY, minX, minY, maxX, maxY);
             CallOffChaseForAreaSectorListPeds(sector->GetList(REPEATSECTOR_PEDS), minX, minY, maxX, maxY, minX, minY, maxX, maxY);
+            return true;
         }
-    }
+    );
 }
 
 // 0x566C10
@@ -1718,7 +1709,7 @@ bool CWorld::ProcessLineOfSightSectorList(CPtrList& ptrList, const CColLine& col
     }
 
     if (localMinTouchDist < minTouchDistance) {
-        // assert(outEntity); // If there was a collision there must be an entity as well! - Checked in the above loop already.
+        // assert(outNearestEntity); // If there was a collision there must be an entity as well! - Checked in the above loop already.
         minTouchDistance = localMinTouchDist;
         return true;
     }
@@ -1749,7 +1740,7 @@ bool CWorld::ProcessVerticalLine_FillGlobeColPoints(const CVector& origin, float
     CColLine colLine{ origin, CVector{origin.x, origin.y, distance} };
     return ProcessVerticalLineSector_FillGlobeColPoints(
         *GetSector(secX, secY),
-        *GetRepeatSector(secX % MAX_REPEAT_SECTORS_X, secY % MAX_REPEAT_SECTORS_Y),
+        *GetRepeatSector(secX, secY),
         colLine,
         outEntity, buildings, vehicles, peds, objects, dummies, doSeeThroughCheck, outCollPoly
     );
@@ -1860,12 +1851,12 @@ void CWorld::TriggerExplosionSectorList(CPtrList& ptrList, const CVector& point,
             CColPoint cp{};
             float maxTouchDist{ 100'000.f };
             if (CCollision::ProcessSphereBox(
-                CColSphere{ Multiply3x3(veh->GetMatrix(), -entityToPointDir), entityToPointDist },
+                CColSphere{ veh->GetMatrix().TransformVector(-entityToPointDir), entityToPointDist },
                 veh->GetColModel()->m_boundBox,
                 cp,
                 maxTouchDist)
             ) {
-                auto colNormal = Multiply3x3(veh->GetMatrix(), -cp.m_vecNormal);
+                auto colNormal = veh->GetMatrix().TransformVector(-cp.m_vecNormal);
                 if (auto& z = colNormal.z; z >= -0.f) { // TODO: Wat is dis?
                     if (z < 0.2f && z > 0.f)
                         z += 0.2f;
@@ -1873,7 +1864,7 @@ void CWorld::TriggerExplosionSectorList(CPtrList& ptrList, const CVector& point,
                     z = -0.2f;
                 }
 
-                colPointPos  = Multiply3x3(veh->GetMatrix(), cp.m_vecPoint);
+                colPointPos  = veh->GetMatrix().TransformVector(cp.m_vecPoint);
                 const auto colPointToExploPointDist = ((colPointPos + veh->GetPosition()) - point).Magnitude();
 
                 // TODO: Document this a little better pls
@@ -1976,6 +1967,8 @@ void CWorld::TriggerExplosionSectorList(CPtrList& ptrList, const CVector& point,
 
 // 0x5684A0
 void CWorld::Process() {
+    ZoneScoped;
+
     const auto IterateMovingList = [&](auto&& fn) {
         for (CPtrNodeDoubleLink* node = ms_listMovingEntityPtrs.GetNode(), *next{}; node; node = next) {
             next = node->m_next;
@@ -2022,6 +2015,8 @@ void CWorld::Process() {
 
     // Process moving entities (And possibly remove them from the world)
     {
+        ZoneScopedN("Process moving entities");
+
         const auto DoProcessMovingEntity = [&](CEntity* entity) {
             if (entity->m_bRemoveFromWorld) {
                 if (entity->IsPed()) {
@@ -2059,6 +2054,8 @@ void CWorld::Process() {
 
     g_LoadMonitor.StartTimer(true);
     if (CReplay::Mode == MODE_PLAYBACK) {
+        ZoneScopedN("Update entity RW");
+
         IterateMovingList([&](CEntity* entity) {
             entity->m_bIsInSafePosition = true;
             entity->UpdateRW();
@@ -2067,6 +2064,8 @@ void CWorld::Process() {
     } else {
         // Process collision
         {
+            ZoneScopedN("Process collision");
+
             const auto ProcessMovingEntityCollision = [](CEntity* entity) {
                 if (!entity->m_bIsInSafePosition) {
                     entity->ProcessCollision();
@@ -2105,6 +2104,8 @@ void CWorld::Process() {
 
         // Process "Shift" (Not sure what that is)
         {
+            ZoneScopedN("Process shift");
+
             bSecondShift = false;
 
             IterateMovingList([&](CEntity* entity) {
@@ -2129,7 +2130,7 @@ void CWorld::Process() {
                     if (!entity->m_bIsInSafePosition) {
                         entity->m_bIsStuck = true;
 
-                        if (entity->m_nStatus == STATUS_PLAYER) { // Try to unstuck player
+                        if (entity->m_nStatus == STATUS_PLAYER) { // Try to unstuck p
                             const auto physical = entity->AsPhysical();
                             physical->m_vecMoveSpeed *= (float)std::pow(SQRT_2 / 2.f, CTimer::GetTimeStepInMS());
                             physical->ApplyMoveSpeed();
@@ -2161,22 +2162,18 @@ void CWorld::Process() {
 
     CMessages::Process();
 
-    for (auto i = 0u; i < std::size(Players); i++) {
-        if (Players[i].m_pPed)
-            Players[i].Process(i);
+    for (auto&& [i, p] : notsa::enumerate(Players)) {
+        if (p.m_pPed) {
+            p.Process((uint32)i);
+        }
     }
 
     CPedScriptedTaskRecord::Process();
-
     CPedGroups::Process();
 
     switch (CTimer::GetFrameCounter() % 8) {
-    case 1:
-        RemoveFallenPeds();
-        break;
-    case 5:
-        RemoveFallenCars();
-        break;
+    case 1: RemoveFallenPeds(); break;
+    case 5: RemoveFallenCars(); break;
     }
 }
 
@@ -2194,22 +2191,17 @@ bool CWorld::GetIsLineOfSightSectorClear(CSector& sector, CRepeatSector& repeatS
 
 // 0x568B80
 void CWorld::FindObjectsKindaColliding(const CVector& point, float radius, bool b2D, int16* outCount, int16 maxCount, CEntity** outEntities, bool buildings, bool vehicles, bool peds, bool objects, bool dummies) {
-    const int32 startSectorX = GetSectorX(point.x - radius);
-    const int32 startSectorY = GetSectorY(point.y - radius);
-    const int32 endSectorX = GetSectorX(point.x + radius);
-    const int32 endSectorY = GetSectorY(point.y + radius);
-
     IncrementCurrentScanCode();
-
     *outCount = 0;
-    for (int32 sectorY = startSectorY; sectorY <= endSectorY; ++sectorY) {
-        for (int32 sectorX = startSectorX; sectorX <= endSectorX; ++sectorX) {
+    IterateSectorsOverlappedByRect(
+        { point, radius },
+        [&](int32 x, int32 y) {
             const auto ProcessSector = [&](CPtrList& list) {
                 FindObjectsKindaCollidingSectorList(list, point, radius, b2D, outCount, maxCount, outEntities);
             };
 
-            auto sector = GetSector(sectorX, sectorY);
-            auto repeatSector = GetRepeatSector(sectorX, sectorY);
+            const auto sector = GetSector(x, y);
+            const auto repeatSector = GetRepeatSector(x, y);
 
             if (buildings)
                 ProcessSector(sector->m_buildings);
@@ -2221,8 +2213,10 @@ void CWorld::FindObjectsKindaColliding(const CVector& point, float radius, bool 
                 ProcessSector(repeatSector->GetList(REPEATSECTOR_OBJECTS));
             if (dummies)
                 ProcessSector(sector->m_dummies);
+
+            return true;
         }
-    }
+    );
 }
 
 // 0x568DD0
@@ -2244,6 +2238,9 @@ void CWorld::FindObjectsIntersectingCube(const CVector& cornerA, const CVector& 
             auto sector = GetSector(sectorX, sectorY);
             auto repeatSector = GetRepeatSector(sectorX, sectorY);
 
+            // TODO: Could add `&& maxCount >= *outCount` to all but the first `if`
+            //       Reason being that once `outEntities` is filled up there's no
+            //       no need to keep scanning for entities.
             if (buildings)
                 ProcessSector(sector->m_buildings);
             if (vehicles)
@@ -2393,7 +2390,7 @@ float CWorld::FindRoofZFor3DCoord(float x, float y, float z, bool* outResult) {
         if (outResult)
             *outResult = false;
         else
-            printf("THERE IS NO MAP BELOW THE FOLLOWING COORS:%f %f %f. (FindGroundZFor3DCoord)\n", x, y, z); // R* triggered
+            DEV_LOG("THERE IS NO MAP BELOW THE FOLLOWING COORS:{} {} {}. (FindGroundZFor3DCoord)", x, y, z); // R* triggered
         return 20.0f;
     }
 }
@@ -2472,7 +2469,7 @@ void CWorld::RepositionOneObject(CEntity* object) {
     })) {
         if (const auto CD = colModel->m_pColData) {
             if (CD->m_nNumBoxes == 1) {
-                RecalcZPosAtPoint(Multiply3x3(object->GetMatrix(), CD->m_pBoxes[0].GetCenter()));
+                RecalcZPosAtPoint(object->GetMatrix().TransformVector(CD->m_pBoxes[0].GetCenter()));
             } else if (CD->m_nNumSpheres) {
                 auto point{ object->GetPosition() };
                 point.z = 1000.f;
@@ -2486,7 +2483,7 @@ void CWorld::RepositionOneObject(CEntity* object) {
                 if (point.z >= 1000.f)
                     RecalcZPosAtPoint(object->GetPosition());
                 else
-                    RecalcZPosAtPoint(Multiply3x3(object->GetMatrix(), point));
+                    RecalcZPosAtPoint(object->GetMatrix().TransformVector(point));
             }
         } else {
             RecalcZPosAtPoint(object->GetPosition());
@@ -2543,12 +2540,12 @@ CEntity* CWorld::TestSphereAgainstWorld(CVector sphereCenter, float sphereRadius
 }
 
 // 0x56A0D0
-// Remove all peds/vehicles not related to the player's group in the area + projectiles, explosions, pickups, etc..
+// Remove all peds/vehicles not related to the p's group in the area + projectiles, explosions, pickups, etc..
 void CWorld::ClearExcitingStuffFromArea(const CVector& point, float radius, uint8 bRemoveProjectilesAndShadows) {
     const auto playerPed = FindPlayerPed();
     const auto playerGroup = CPedGroups::GetPedsGroup(playerPed);
 
-    // Remove all peds in radius who aren't followers of the player's group
+    // Remove all peds in radius who aren't followers of the p's group
     const auto pedPool = GetPedPool();
     for (auto i = 0; i < pedPool->GetSize(); i++) {
         if (auto ped = pedPool->GetAt(i)) {
@@ -2562,7 +2559,7 @@ void CWorld::ClearExcitingStuffFromArea(const CVector& point, float radius, uint
         }
     }
 
-    // Remove all vehicles in radius in which there are no peds who're follower's of the player's group
+    // Remove all vehicles in radius in which there are no peds who're follower's of the p's group
     const auto vehPool = GetVehiclePool();
     for (auto i = 0; i < vehPool->GetSize(); i++) {
         const auto veh = vehPool->GetAt(i);
@@ -2584,26 +2581,7 @@ void CWorld::ClearExcitingStuffFromArea(const CVector& point, float radius, uint
         if (CGarages::IsPointWithinHideOutGarage(veh->GetPosition()))
             continue;
 
-        { // todo: see ClearCarsFromArea | inlined
-        if (auto& driver = veh->m_pDriver) {
-            CPopulation::RemovePed(driver);
-            CEntity::ClearReference(driver);
-        }
-
-        for (auto& passenger : veh->GetPassengers()) {
-            if (passenger) {
-                veh->RemovePassenger(passenger);
-                CPopulation::RemovePed(passenger);
-            }
-        }
-
-        if (CCarCtrl::IsThisVehicleInteresting(veh))
-            CGarages::StoreCarInNearestImpoundingGarage(veh);
-
-        CCarCtrl::RemoveFromInterestingVehicleList(veh);
-        Remove(veh);
-        delete veh;
-        }
+        RemoveVehicleAndItsOccupants(veh);
     }
 
     CObject::DeleteAllTempObjectsInArea(point, radius);
@@ -2637,8 +2615,7 @@ bool CWorld::GetIsLineOfSightClear(const CVector& origin, const CVector& target,
 
     if (originSectorX == targetSectorX && originSectorY == targetSectorY) { // Both in the same sector
         return ProcessSector(originSectorX, originSectorY);
-    }
-    else if (originSectorX == targetSectorX) { // Same X for both, iterate on Y
+    } else if (originSectorX == targetSectorX) { // Same X for both, iterate on Y
         if (originSectorY >= targetSectorY) { // origin => target on Y axis
             for (auto y = originSectorY; y >= targetSectorY; y--) {
                 if (!ProcessSector(originSectorX, y))
@@ -2650,8 +2627,7 @@ bool CWorld::GetIsLineOfSightClear(const CVector& origin, const CVector& target,
                     return false;
             }
         }
-    }
-    else if (originSectorY == targetSectorY) { // Same Y for both, iterate on X
+    } else if (originSectorY == targetSectorY) { // Same Y for both, iterate on X
         if (originSectorX >= targetSectorX) { // origin => target on X axis
             for (auto x = originSectorX; x >= targetSectorX; x--) {
                 if (!ProcessSector(x, originSectorY))
@@ -2664,8 +2640,7 @@ bool CWorld::GetIsLineOfSightClear(const CVector& origin, const CVector& target,
                     return false;
             }
         }
-    }
-    else {  // Different x and y sectors
+    } else {  // Different x and y sectors
         float displacement = (target.y - origin.y) / (target.x - origin.x);
 
         // TODO: Make this more readable
@@ -2680,8 +2655,7 @@ bool CWorld::GetIsLineOfSightClear(const CVector& origin, const CVector& target,
                     if (!ProcessSector(originSectorX, y))
                         return false;
                 }
-            }
-            else {
+            } else {
                 for (y = originSectorY; y >= endY; y--) {
                     if (!ProcessSector(originSectorX, y))
                         return false;
@@ -2871,6 +2845,10 @@ void CWorld::RepositionCertainDynamicObjects() {
 
 // 0x56BA00
 bool CWorld::ProcessLineOfSight(const CVector& origin, const CVector& target, CColPoint& outColPoint, CEntity*& outEntity, bool buildings, bool vehicles, bool peds, bool objects, bool dummies, bool doSeeThroughCheck, bool doCameraIgnoreCheck, bool doShootThroughCheck) {
+    assert(!origin.HasNanOrInf() && !target.HasNanOrInf()); // We're getting random nan/inf's from somewhere, so let's try to root cause it...
+
+    outEntity = nullptr;
+
     const int32 originSectorX = GetSectorX(origin.x);
     const int32 originSectorY = GetSectorY(origin.y);
     const int32 targetSectorX = GetSectorX(target.x);
@@ -3021,6 +2999,34 @@ void CWorld::IncrementCurrentScanCode() {
         ms_nCurrentScanCode++;
     }
 }
+
+/*!
+* @notsa 
+* @brief Remove a vehicle from the world, along with all of it's occupants.
+*/
+void CWorld::RemoveVehicleAndItsOccupants(CVehicle* veh) {
+    if (const auto driver = veh->m_pDriver) {
+        CPopulation::RemovePed(driver);
+        // CEntity::ClearReference(driver); // Entity has been deleted, it makes no sense to call this
+    }
+
+    for (const auto passenger : veh->GetPassengers()) {
+        if (passenger) {
+            veh->RemovePassenger(passenger);
+            CPopulation::RemovePed(passenger);
+        }
+    }
+
+    if (CCarCtrl::IsThisVehicleInteresting(veh)) {
+        CGarages::StoreCarInNearestImpoundingGarage(veh);
+    }
+
+    CCarCtrl::RemoveFromInterestingVehicleList(veh);
+
+    Remove(veh);
+    delete veh;
+}
+
 
 // 0x407250
 uint16 GetCurrentScanCode() {

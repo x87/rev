@@ -2,6 +2,7 @@
 
 #include "eAudioEvents.h"
 #include "AEExplosionAudioEntity.h"
+#include "AEDoorAudioEntity.h"
 
 class CEntity;
 class CVector;
@@ -78,7 +79,6 @@ private:
     static void InjectHooks();
 
     CAEScriptAudioEntity* Constructor();
-    void UpdateParameters_Reversed(CAESound* sound, int16 curPlayPos);
 };
 
 VALIDATE_SIZE(CAEScriptAudioEntity, 0x21C);

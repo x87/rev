@@ -2,20 +2,18 @@
 
 #include "EventKnockOffBike.h"
 
-#include "EntityCollisionEvents.h"
 #include "TaskComplexEnterCar.h"
 #include "TaskSimpleCarSetPedOut.h"
 
 void CEventKnockOffBike::InjectHooks()
 {
-    RH_ScopedClass(CEventKnockOffBike);
+    RH_ScopedVirtualClass(CEventKnockOffBike, 0x85B2E0, 16);
     RH_ScopedCategory("Events");
 
-    using namespace ReversibleHooks;
     RH_ScopedOverloadedInstall(Constructor, "first", 0x4AFCF0, CEventKnockOffBike*(CEventKnockOffBike::*)(CVehicle*, CVector*, CVector*, float, float, uint8, uint8, int32, CPed*, bool, bool));
     RH_ScopedOverloadedInstall(Constructor, "second", 0x4AFC70, CEventKnockOffBike*(CEventKnockOffBike::*)());
-    RH_ScopedVirtualInstall(AffectsPed, 0x4AFEE0);
-    RH_ScopedVirtualInstall(ReportCriminalEvent, 0x4B4E80);
+    RH_ScopedVMTInstall(AffectsPed, 0x4AFEE0);
+    RH_ScopedVMTInstall(ReportCriminalEvent, 0x4B4E80);
     RH_ScopedInstall(From, 0x4AFDD0);
     RH_ScopedInstall(SetPedOutCar, 0x4AFF60);
     RH_ScopedInstall(CalcForcesAndAnims, 0x4B0020);
@@ -75,17 +73,6 @@ CEventKnockOffBike* CEventKnockOffBike::Constructor()
 // 0x4AFEE0
 bool CEventKnockOffBike::AffectsPed(CPed* ped)
 {
-    return CEventKnockOffBike::AffectsPed_Reversed(ped);
-}
-
-// 0x4B4E80
-void CEventKnockOffBike::ReportCriminalEvent(CPed* ped)
-{
-    return CEventKnockOffBike::ReportCriminalEvent_Reversed(ped);
-}
-
-bool CEventKnockOffBike::AffectsPed_Reversed(CPed* ped)
-{
     if (ped->IsAlive()) {
         if (m_vehicle && m_vehicle->m_nStatus == STATUS_GHOST)
             return false;
@@ -107,7 +94,8 @@ bool CEventKnockOffBike::AffectsPed_Reversed(CPed* ped)
     return false;
 }
 
-void CEventKnockOffBike::ReportCriminalEvent_Reversed(CPed* ped)
+// 0x4B4E80
+void CEventKnockOffBike::ReportCriminalEvent(CPed* ped)
 {
     if (IsCriminalEvent()) {
         if (ped->m_nPedType == PED_TYPE_COP && m_ped && m_ped->IsPlayer())
@@ -148,7 +136,7 @@ void CEventKnockOffBike::SetPedOutCar(CPed* ped)
         m_exitDoor = TARGET_DOOR_REAR_LEFT;
     else if (m_vehicle->m_apPassengers[2] == ped)
         m_exitDoor = TARGET_DOOR_REAR_RIGHT;
-    CTaskSimpleCarSetPedOut taskCarSetPedOut(m_vehicle, m_exitDoor, true);
+    CTaskSimpleCarSetPedOut taskCarSetPedOut(m_vehicle, (eTargetDoor)m_exitDoor, true);
     taskCarSetPedOut.m_bKnockedOffBike = true;
     taskCarSetPedOut.m_bSwitchOffEngine = false;
     taskCarSetPedOut.ProcessPed(ped);
@@ -211,7 +199,10 @@ int32 CEventKnockOffBike::CalcForcesAndAnims(CPed* ped)
             ped->ApplyMoveForce(force);
             return ANIM_ID_KO_SPIN_L;
         }
+        default:
+            NOTSA_UNREACHABLE();
         }
+        break;
     case KNOCK_OFF_TYPE_SKIDBACKFRONT:
     {
         ped->m_vecMoveSpeed = m_moveSpeed;

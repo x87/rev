@@ -96,7 +96,7 @@ CTask* CTaskComplexProstituteSolicit::CreateSubTask(eTaskType taskType, CPed* pr
             v16 = &v24;
             v17 = &v28;
         }
-        v18 = MultiplyMatrixWithVector(v17, &out, v16);
+        v18 = v17->TransformPoint(&out, v16);
         x = v18->x;
         y = v18->y;
         z = v18->z;
@@ -204,8 +204,8 @@ CTask* CTaskComplexProstituteSolicit::CreateNextSubTask(CPed* ped) {
 
     switch (m_pSubTask->GetTaskType()) {
     case TASK_COMPLEX_TURN_TO_FACE_ENTITY:
-        ped->Say(192);
-        CMessages::AddMessage(TheText.Get("PROS_04"), 5000, 1, true); // You want a good time, honey?
+        ped->Say(CTX_GLOBAL_SOLICIT);
+        CMessages::AddMessageQ(TheText.Get("PROS_04"), 5000, 1, true); // You want a good time, honey?
         return CreateSubTask(TASK_SIMPLE_STAND_STILL, ped);
 
     case TASK_COMPLEX_SEEK_ENTITY:
@@ -234,8 +234,8 @@ CTask* CTaskComplexProstituteSolicit::CreateNextSubTask(CPed* ped) {
             return CreateSubTask(TASK_COMPLEX_ENTER_CAR_AS_PASSENGER, ped);
         }
         CMessages::ClearMessages(false);
-        CMessages::AddMessage(TheText.Get("PROS_06"), 2000, 1, true); // You've got money right?
-        CMessages::AddMessage(TheText.Get("PROS_09"), 3000, 1, true); // Stop wasting my time!
+        CMessages::AddMessageQ(TheText.Get("PROS_06"), 2000, 1, true); // You've got money right?
+        CMessages::AddMessageQ(TheText.Get("PROS_09"), 3000, 1, true); // Stop wasting my time!
         return CreateSubTask(TASK_FINISHED, ped);
     }
 
@@ -248,7 +248,7 @@ CTask* CTaskComplexProstituteSolicit::CreateNextSubTask(CPed* ped) {
         return nullptr;
     }
 
-    ped->Say(197);
+    ped->Say(CTX_GLOBAL_SOLICIT_THANKS);
     m_vecVehiclePosn = m_pClient->m_pVehicle->GetPosition();
     return CreateSubTask(TASK_COMPLEX_CAR_DRIVE, ped);
 }

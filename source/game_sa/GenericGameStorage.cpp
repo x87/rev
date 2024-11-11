@@ -12,6 +12,7 @@
 #include "Rope.h"
 #include "Ropes.h"
 #include "TheScripts.h"
+#include "Garages.h"
 
 constexpr uint32 SIZE_OF_ONE_GAME_IN_BYTES = 202748;
 
@@ -32,8 +33,8 @@ void CGenericGameStorage::InjectHooks() {
     RH_ScopedInstall(GenericLoad, 0x5D17B0, { .reversed = false });
     RH_ScopedInstall(GenericSave, 0x5D13E0, { .reversed = false });
     RH_ScopedInstall(CheckSlotDataValid, 0x5D1380, { .reversed = false });
-    RH_ScopedInstall(LoadDataFromWorkBuffer, 0x5D1300, { .reversed = false });
-    RH_ScopedInstall(SaveDataToWorkBuffer, 0x5D1270, { .reversed = false });
+    //RH_ScopedInstall(LoadDataFromWorkBuffer, 0x5D1300, { .reversed = false });
+    //RH_ScopedInstall(SaveDataToWorkBuffer, 0x5D1270, { .reversed = false });
     RH_ScopedInstall(LoadWorkBuffer, 0x5D10B0, { .reversed = false });
     RH_ScopedInstall(SaveWorkBuffer, 0x5D0F80, { .reversed = false });
     RH_ScopedInstall(GetCurrentVersionNumber, 0x5D0F50, { .reversed = false });
@@ -486,7 +487,7 @@ bool CGenericGameStorage::LoadDataFromWorkBuffer(void* data, int32 size) {
 
     auto pos = ms_WorkBufferPos;
 
-    if (size + pos > ms_WorkBufferSize) {
+    if (static_cast<uint32>(size + pos) > ms_WorkBufferSize) {
         const auto maxSize = BUFFER_SIZE - pos;
         if (LoadDataFromWorkBuffer(data, maxSize)) {
             if (LoadWorkBuffer()) {
@@ -617,7 +618,7 @@ bool CGenericGameStorage::SaveWorkBuffer(bool bIncludeChecksum) {
 // 0x5D0F50
 uint32 CGenericGameStorage::GetCurrentVersionNumber() {
     char buffer[40]{};
-    sprintf(buffer, "%s%s", "Apr 28 2005", "10:28:55");
+    sprintf_s(buffer, "%s%s", "Apr 28 2005", "10:28:55");
     return CKeyGen::GetKey(buffer);
 }
 
@@ -731,7 +732,7 @@ bool CGenericGameStorage::RestoreForStartLoad() {
 }
 
 // 0x618D00
-const char* GetSavedGameDateAndTime(int32 slot) {
+const GxtChar* GetSavedGameDateAndTime(int32 slot) {
     assert(slot < MAX_SAVEGAME_SLOTS);
     return CGenericGameStorage::ms_SlotSaveDate[slot];
 }

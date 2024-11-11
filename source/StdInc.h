@@ -23,15 +23,23 @@
 #include <cstring>
 #include <tuple>
 #include <initializer_list>
+#include <format>
+#undef GetCurrentTime // gtfo windows.h
 
 #include <ranges>
 namespace rng = std::ranges;
+namespace rngv = std::views;
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #include "Base.h"
 #include "config.h"
 
 #include "HookSystem.h"
 #include "reversiblehooks\ReversibleHooks.h"
+
+#include <tracy/Tracy.hpp>
 
 // DirectX
 #include <d3d9.h>
@@ -60,6 +68,8 @@ namespace rng = std::ranges;
 #include "game_sa\RenderWare\rw\rwtexdict.h"
 #include "game_sa\RenderWare\rw\skeleton.h"
 #include "game_sa\RenderWare\RenderWare.h"
+#include <PluginBase.h>
+#include <RenderWare.h>
 
 // oswrapper
 #include "oswrapper/oswrapper.h"
@@ -110,14 +120,13 @@ namespace rng = std::ranges;
 #include "game_sa\Enums\eClothesTexturePart.h"
 #include "game_sa\Enums\eCrimeType.h"
 #include "game_sa\Enums\eDecisionMakerEvents.h"
-#include "game_sa\Enums\eEmergencyPedVoices.h"
 #include "game_sa\Enums\eEntityStatus.h"
 #include "game_sa\Enums\eEntityType.h"
 #include "game_sa\Enums\eEventType.h"
 #include "game_sa\Enums\eFontAlignment.h"
 #include "game_sa\Enums\eGameState.h"
 #include "game_sa\Enums\eModelID.h"
-#include "game_sa\Enums\ePedBones.h"
+#include "game_sa\Enums\eBoneTag.h"
 #include "game_sa\Enums\ePedModel.h"
 #include "game_sa\Enums\ePedState.h"
 #include "game_sa\Enums\eRadioID.h"
@@ -172,10 +181,13 @@ namespace rng = std::ranges;
 #include "game_sa\Events\EventAttractor.h"
 #include "game_sa\Events\EventGunShot.h"
 #include "game_sa\Events\EventGunShotWhizzedBy.h"
-#include "game_sa\Events\LeaderEvents.h"
-#include "game_sa\Events\GroupEvents.h"
-#include "game_sa\Events\MentalStateEvents.h"
-#include "game_sa\Events\PotentialWalkIntoEvents.h"
+#include "Events/EventPlayerCommandToGroup.h"
+#include "Events/EventPlayerCommandToGroupAttack.h"
+#include "Events/EventPlayerCommandToGroupGather.h"
+#include "Events/EventPotentialWalkIntoPed.h"
+#include "Events/EventPotentialWalkIntoFire.h"
+#include "Events/EventPotentialWalkIntoObject.h"
+#include "Events/EventPotentialWalkIntoVehicle.h"
 #include "game_sa\Events\EventHitByWaterCannon.h"
 #include "game_sa\Events\EventInWater.h"
 #include "game_sa\Events\EventDeath.h"
@@ -183,7 +195,6 @@ namespace rng = std::ranges;
 #include "game_sa\Events\EventVehicleDamage.h"
 #include "game_sa\Events\EventPedToFlee.h"
 #include "game_sa\Events\EventPedToChase.h"
-#include "game_sa\Events\EntityCollisionEvents.h"
 #include "game_sa\Events\EventEditableResponse.h"
 #include "game_sa\Events\EventSoundQuiet.h"
 #include "game_sa\Events\EventHandlerHistory.h"
@@ -256,8 +267,6 @@ namespace rng = std::ranges;
 #include "game_sa\GangInfo.h"
 #include "game_sa\Gangs.h"
 #include "game_sa\GangWars.h"
-#include "game_sa\Garage.h"
-#include "game_sa\Garages.h"
 #include "game_sa\General.h"
 #include "game_sa\GenericGameStorage.h"
 #include "game_sa\cHandlingDataMgr.h"
@@ -329,7 +338,6 @@ namespace rng = std::ranges;
 #include "game_sa\Sprite2d.h"
 #include "game_sa\Stats.h"
 #include "game_sa\StencilShadowObject.h"
-#include "game_sa\StencilShadowObjects.h"
 #include "game_sa\StencilShadows.h"
 #include "game_sa\StoredCollPoly.h"
 #include "game_sa\StreamedScripts.h"
@@ -409,19 +417,9 @@ namespace rng = std::ranges;
 #include "game_sa\Audio\config\eAudioSlot.h"
 #include "game_sa\Audio\config\eSFX.h"
 
-#include "game_sa\Fx\CarFXRenderer.h"
-#include "game_sa\Fx\FxBox.h"
-#include "game_sa\Fx\FxEmitterBP.h"
-#include "game_sa\Fx\FxFrustumInfo.h"
-#include "game_sa\Fx\FxInfoManager.h"
+#include "game_sa\Fx\eFxInfoType.h"
 #include "game_sa\Fx\FxManager.h"
-#include "game_sa\Fx\FxMemoryPool.h"
-#include "game_sa\Fx\FxPlane.h"
-#include "game_sa\Fx\FxPrimBP.h"
 #include "game_sa\Fx\FxPrtMult.h"
-#include "game_sa\Fx\FxSphere.h"
-#include "game_sa\Fx\FxSystemBP.h"
-#include "game_sa\Fx\FxSystem.h"
 #include "game_sa\Fx\Fx.h"
 
 #include "game_sa\Models\AtomicModelInfo.h"
@@ -453,6 +451,8 @@ namespace rng = std::ranges;
 #include "game_sa\Tasks\TaskSequences.h"
 #include "game_sa\Tasks\PedScriptedTaskRecord.h"
 #include "game_sa\Tasks\ScriptedBrainTaskStore.h"
+
+#include "game_sa/RenderBuffer.hpp"
 
 #ifdef EXTRA_DEBUG_FEATURES
 #include "toolsmenu\DebugModules\COcclusionDebugModule.h"
