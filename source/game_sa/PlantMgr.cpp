@@ -22,7 +22,7 @@ static bool GeometrySetPrelitConstantColor(RpGeometry* geometry, uint32 color) {
 
     RpGeometryLock(geometry, 4095);
     if (geometry->preLitLum) {
-        std::memset(geometry->preLitLum, CRGBA(255, 255, 255, 255).ToInt(), geometry->numVertices);
+        std::memset(geometry->preLitLum, CRGBA(255, 255, 255, 255).ToIntRGBA(), geometry->numVertices);
     }
     RpGeometryUnlock(geometry);
 
@@ -49,7 +49,7 @@ static bool LoadModels(std::initializer_list<const char*> models, RpAtomic* (&at
         RpGeometryLock(geometry, 4095); // todo: enum?
         geometry->flags = (geometry->flags & 0xFFFFFF8F) | rpGEOMETRYMODULATEMATERIALCOLOR;
         RpGeometryUnlock(geometry);
-        GeometrySetPrelitConstantColor(geometry, CRGBA(255, 255, 255, 255).ToInt());
+        GeometrySetPrelitConstantColor(geometry, CRGBA(255, 255, 255, 255).ToIntRGBA());
 
         auto data = 0x32000000;
         RpGeometryForAllMaterials(geometry, [](RpMaterial* material, void* data) {

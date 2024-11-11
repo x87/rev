@@ -2148,7 +2148,7 @@ struct RxD3D9ResEntryHeader
 
     IDirect3DIndexBuffer9        *indexBuffer;   /**< Index buffer */ // NOTSA: Changed type from void*
 
-    RwUInt32    primType;       /**< Primitive type */
+    D3DPRIMITIVETYPE    primType;       /**< Primitive type */
 
     RxD3D9VertexStream vertexStream[RWD3D9_MAX_VERTEX_STREAMS];   /**< Vertex streams */
 
@@ -2183,7 +2183,7 @@ struct RxD3D9InstanceData
 
     RwBool          vertexAlpha;    /**< The prelight data contains alpha */
 
-    void            *vertexShader;   /**< Vertex shader */
+    IDirect3DVertexShader9            *vertexShader;   /**< Vertex shader */
 
     RwUInt32        baseIndex;      /**< Needed if we share the vertex buffer */
 
