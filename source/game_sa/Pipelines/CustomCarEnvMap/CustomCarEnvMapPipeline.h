@@ -31,7 +31,7 @@ struct CustomEnvMapPipeMaterialData {
     uint8 transSclY;
 
     uint8 shininess;
-    int16 renderFrameCounter;
+    RwUInt16 renderFrame;
     RwTexture* texture;
 
     void FromStream(const ReflectionMaterialStream& stream) { // 0x5D8BE0
@@ -41,15 +41,15 @@ struct CustomEnvMapPipeMaterialData {
         transSclY = (uint8)(stream.transSclY * 8.0f);
         shininess = (uint8)(stream.shininess * 255.0f);
         texture   = stream.texture;
-        renderFrameCounter = 0;
+        renderFrame = 0;
     };
 };
 VALIDATE_SIZE(CustomEnvMapPipeMaterialData, 0xC);
 
 struct CustomEnvMapPipeAtomicData {
-    float lastTrans;
-    float posx;
-    float posy;
+    float offsetU;
+    float prevPosX;
+    float prevPosY;
 };
 VALIDATE_SIZE(CustomEnvMapPipeAtomicData, 0xC);
 
@@ -100,11 +100,13 @@ public:
     static void PreRenderUpdate();
     static CustomEnvMapPipeMaterialData* DuplicateCustomEnvMapPipeMaterialData(CustomEnvMapPipeMaterialData** data);
 
-    static void AllocEnvMapPipeAtomicData(RpAtomic* atomic);
+    static CustomEnvMapPipeAtomicData* AllocEnvMapPipeAtomicData(RpAtomic* atomic);
     static void SetCustomEnvMapPipeAtomicDataDefaults(CustomEnvMapPipeAtomicData* data);
     static void SetCustomEnvMapPipeMaterialDataDefaults(CustomEnvMapPipeMaterialData* data);
 
     // Env Mat
+    static auto*& EnvMapPlGetData(/*RpMaterial*/void* obj) { return *RWPLUGINOFFSET(CustomEnvMapPipeMaterialData*, obj, ms_envMapPluginOffset); }
+
     static void* pluginEnvMatConstructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginEnvMatDestructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginEnvMatCopyConstructorCB(void* dstObject, const void* srcObject, int32 offsetInObject, int32 sizeInObject);
@@ -126,14 +128,16 @@ public:
     static RwTexture* GetFxEnvTexture(RpMaterial* material);
     static void SetFxEnvTexture(RpMaterial* material, RwTexture* texture);
 
-    static void 
-
     // Env Atm
+    static auto*& EnvMapAtmPlGetData(/*RpAtomic*/void* obj) { return *RWPLUGINOFFSET(CustomEnvMapPipeAtomicData*, obj, ms_envMapAtmPluginOffset); }
+
     static void* pluginEnvAtmConstructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginEnvAtmDestructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginEnvAtmCopyConstructorCB(void* dstObject, const void* srcObject, int32 offsetInObject, int32 sizeInObject);
 
     // Spec Mat
+    static auto*& SpecularMapPlGetData(/*RpMaterial*/void* obj) { return *RWPLUGINOFFSET(CustomSpecMapPipeMaterialData*, obj, ms_specularMapPluginOffset); }
+
     static void* pluginSpecMatConstructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginSpecMatDestructorCB(void* object, int32 offsetInObject, int32 sizeInObject);
     static void* pluginSpecMatCopyConstructorCB(void* dstObject, const void* srcObject, int32 offsetInObject, int32 sizeInObject);

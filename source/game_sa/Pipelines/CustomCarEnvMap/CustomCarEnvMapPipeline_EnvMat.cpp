@@ -136,5 +136,5 @@ void CCustomCarEnvMapPipeline::SetCustomEnvMapPipeMaterialDataDefaults(CustomEnv
     data->transSclY = 8;
     data->shininess = UINT8_MAX;
     data->texture = nullptr;
-    data->renderFrameCounter = 0;
+    data->renderFrame = 0;
 }
