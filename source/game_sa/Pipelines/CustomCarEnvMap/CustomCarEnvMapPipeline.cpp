@@ -222,11 +222,11 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
     const auto noReflections = (CVisibilityPlugins::GetAtomicId(atomic) & (ATOMIC_IS_BLOWN_UP|ATOMIC_DISABLE_REFLECTIONS)) != 0;
 
-    DWORD rsLighting = 0;
-    RwD3D9GetRenderState(D3DRS_LIGHTING, &rsLighting);
-    const auto noExtraLight = rsLighting == 0 && !(rxGeoFlags & 8);
+    DWORD isLightingEnabled = 0;
+    RwD3D9GetRenderState(D3DRS_LIGHTING, &isLightingEnabled);
 
-    if (noExtraLight) {
+    const auto geoHasNoLighting = isLightingEnabled == 0 && !(rxGeoFlags & rxGEOMETRY_PRELIT);
+    if (geoHasNoLighting) {
         RwD3D9SetTexture(NULL, 0);
         RwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, 0xFF000000);
         RwD3D9SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
@@ -235,15 +235,15 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
         RwD3D9SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
     }
 
-    auto* const resHeader = (RxD3D9ResEntryHeader*)(resEntry + 1);
-    auto* const meshes = (RxD3D9InstanceData*)(resHeader + 1);
+    auto* const header = (RxD3D9ResEntryHeader*)(resEntry + 1);
+    auto* const meshes = (RxD3D9InstanceData*)(header + 1);
 
-    if (const auto i = resHeader->indexBuffer) {
+    if (const auto i = header->indexBuffer) {
         RwD3D9SetIndices(i);
     }
 
-    _rwD3D9SetStreams(resHeader->vertexStream, resHeader->useOffsets);
-    RwD3D9SetVertexDeclaration(resHeader->vertexDeclaration);
+    _rwD3D9SetStreams(header->vertexStream, header->useOffsets);
+    RwD3D9SetVertexDeclaration(header->vertexDeclaration);
 
     auto* const clump = RpAtomicGetClump(atomic);
     auto* const frame = clump
@@ -252,19 +252,15 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
     const auto* const ltm = RwFrameGetLTM(frame);
     const auto* const pos = RwMatrixGetPos(ltm);
 
-    for (RwUInt32 i = 0; i < resHeader->numMeshes; i++) { // 0x5D99E9
-        auto* const mesh = &meshes[i];
-        auto* const mat  = mesh->material;
-
+    for (RwUInt32 i = 0; i < header->numMeshes; i++) { // 0x5D99E9
+        auto* const mesh  = &meshes[i];
+        auto* const mat   = mesh->material;
         const auto  flags = std::bit_cast<RwUInt32>(mat->surfaceProps.specular); // I guess they reuse this for storing the flags?
-        const auto  noSpec = !(flags & 4) || (g_fx.GetFxQuality() < FX_QUALITY_HIGH && noReflections); // No specular?
 
         // Calculate spec and power & set render states
+        const auto hasSpecular = isLightingEnabled && (flags & 4) && (g_fx.GetFxQuality() >= FX_QUALITY_HIGH || !noReflections); // Specular lighting enabled?
         float spec, power;
-        if (noSpec || rsLighting == 0) { // 0x5D9A4E - 0x5D9A74
-            spec  = 0.f;
-            power = 0.f;
-        } else { // 0x5D9A7F - 0x5D9B25
+        if (hasSpecular) { // 0x5D9A7F - 0x5D9B25 (Inverted if)
             const auto specularity = GetFxSpecSpecularity(mat);
             spec  = std::min(1.f, specIntensity * specularity * 2.f);
             power = specularity * 100.f;
@@ -276,10 +272,13 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
             // 0x5D9ACB
             RwD3D9SetRenderState(D3DRS_LOCALVIEWER, FALSE);
             RwD3D9SetRenderState(D3DRS_SPECULARMATERIALSOURCE, D3DMCS_MATERIAL);
+        } else {  // 0x5D9A4E - 0x5D9A74
+            spec  = 0.f;
+            power = 0.f;
         }
 
         // 0x5D9B0D + 0x5D9AC5
-        RwD3D9SetRenderState(D3DRS_SPECULARENABLE, !noSpec);
+        RwD3D9SetRenderState(D3DRS_SPECULARENABLE, hasSpecular);
 
 
         // 0x5D9B2B
@@ -308,7 +307,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
                            sy = GetFxEnvScaleY(mat);
 
                 // Now set the texture transform matrix
-                D3DMATRIX transform{.m = {
+                const D3DMATRIX transform{.m = {
                     { sx,  0.f, 0.f, 0.f },
                     { 0.f, sy,  0.f, 0.f },
                     { u,   v,   1.f, 0.f },
@@ -321,8 +320,8 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
             RwD3D9SetTexture(GetFxEnvTexture(mat), 1);
 
             // 0x5D9C04
-            const auto c = std::min(255u, (uint32)(GetFxEnvShininess(mat) * specIntensity * 254.f));
-            RwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(0xFF, c, c, c)); // TODO: Maybe wrong?
+            const auto c = std::min(0xFFu, (uint32)(GetFxEnvShininess(mat) * specIntensity * 254.f));
+            RwD3D9SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_ARGB(0xFF, c, c, c));
 
             // 0x5D9C38
             RwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_MULTIPLYADD);
@@ -333,7 +332,8 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
             RwD3D9SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
             RwD3D9SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
             RwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_CAMERASPACENORMAL | 1);
-            RwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2 | D3DTTFF_PROJECTED);
+            RwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED | D3DTTFF_COUNT3);
+
             RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
         }
 
@@ -346,7 +346,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
             // Calculate and set texture UV transform
             {
-                // Inlined from 0x5D8590
+                // Inline begin (@ 0x5D8590)
                 auto* const env_map_atm = EnvMapAtmPlGetData(atomic);
                 auto* const env_map_mat = EnvMapPlGetData(mat);
 
@@ -357,8 +357,8 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
                     env_map_mat->renderFrame = RWSRCGLOBAL(renderFrame);
 
                     const auto CalcPos = [](float p, float s) {
-                        const auto n = (int32)(p / s);
-                        const auto t = std::abs((p - n * s) / s); // std::abs(std::modf(p, s) / s);
+                        const auto n = (int32)(p / s); // floor(p / s)
+                        const auto t = std::abs((p - (float)(n) * s) / s); // = std::abs(std::modf(p, s) / s) = std::abs((p - floor(p / s) * s) / s)
                         return n % 2 == 0
                             ? 1.f - t
                             : t;
@@ -377,7 +377,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
                     };
 
                     // 0x5D8719 - Very much simplified
-                    const auto dir = CVector2D{currUV - prevUV}.Dot(CVector2D{ ltm->up }) >= 0.f;
+                    const auto dir = (CVector2D{*pos} - CVector2D{env_map_atm->prevPosX, env_map_atm->prevPosY}).Dot(CVector2D{ ltm->up });
                     env_map_atm->offsetU = notsa::wrap(
                         env_map_atm->offsetU + std::copysignf(prevUV.CWSum() - currUV.CWSum(), dir),
                         0.f, 1.f
@@ -390,10 +390,10 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
                 // 0x5D87EA
                 auto v = std::clamp(ltm->at.x + ltm->at.y, 0.f, 0.1f);
-                     v = ltm->at.z < 0.f
-                        ? 1.f - v
-                        : v;
-                const auto u = env_map_atm->offsetU;
+                if (ltm->at.z < 0.f) {
+                    v = 1.f - v;
+                }
+                const auto u = -env_map_atm->offsetU;
 
                 // Inline end
 
@@ -421,17 +421,18 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
             RwD3D9SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
             RwD3D9SetTextureStageState(1, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
             RwD3D9SetTextureStageState(1, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
-            RwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
-            RwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, 2);
+            RwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_PASSTHRU | 1);
+            RwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
             RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
         }
 
         // 0x5D9E0D
         RwRenderStateSet(rwRENDERSTATEVERTEXALPHAENABLE, RWRSTATE(mesh->vertexAlpha || mesh->material->color.alpha != 0xFF));
 
-        if (noExtraLight) { // 0x5D9E31
-            RxD3D9InstanceDataRender(resHeader, mesh);
-        } else if (rsLighting) { // 0x5D9E3D
+        if (geoHasNoLighting) { // 0x5D9E31 - Render without lighting
+            RxD3D9InstanceDataRender(header, mesh);
+        } else if (isLightingEnabled) { // 0x5D9E3D
             // Some car materials are initially painted over, so for those we use black (0, 0, 0) instead
             const auto isSpecialColor = notsa::contains<uint32>({
                 0xAF00FF, // @ 0x5D9E6B
@@ -485,7 +486,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
                     RwD3D9SetRenderState(D3DRS_AMBIENT, isPrelit ? color.ToIntARGB() : 0xFFFFFFFF);
                     RwD3D9SetRenderState(D3DRS_COLORVERTEX, isPrelit);
-                    RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, isPrelit ? D3DMCS_MATERIAL : D3DMCS_COLOR1);
+                    RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, isPrelit ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
                     RwD3D9SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
 
                     const auto amb = mat->surfaceProps.ambient / 255.f;
@@ -499,10 +500,10 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
                 RwD3D9SetMaterial(&m);
             }
 
-            RxD3D9InstanceDataRenderLighting(resHeader, mesh, rxGeoFlags, mesh->material->texture); // 0x5D9EEB
+            RxD3D9InstanceDataRenderLighting(header, mesh, rxGeoFlags, mesh->material->texture); // 0x5D9EEB
         }
 
-        if (noSpec && rsLighting != 0) {
+        if (hasSpecular) {
             RwD3D9SetRenderState(D3DRS_SPECULARENABLE, FALSE);
             RwD3D9EnableLight(1, FALSE);
         }
@@ -514,7 +515,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
     RwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
     RwD3D9SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-    RwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, 1);
+    RwD3D9SetTextureStageState(1, D3DTSS_TEXCOORDINDEX, D3DTSS_TCI_PASSTHRU | 1);
     RwD3D9SetTextureStageState(1, D3DTSS_TEXTURETRANSFORMFLAGS, NULL);
 }
 

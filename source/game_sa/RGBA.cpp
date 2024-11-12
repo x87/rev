@@ -53,7 +53,7 @@ uint32 CRGBA::ToIntRGBA() const { // RGBA (msb(r) -> lsb(a))
 }
 
 uint32 CRGBA::ToIntARGB() const {
-    return ((uint32)a << 24) | (ToIntRGB() << 0);
+    return ((uint32)a << 24) | ToIntRGB();
 }
 
 RwRGBA CRGBA::ToRwRGBA() const {
