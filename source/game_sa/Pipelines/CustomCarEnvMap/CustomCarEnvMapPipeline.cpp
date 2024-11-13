@@ -285,8 +285,8 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
         RwD3D9SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
         RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 
-        // 0x5D9B54 (EnvCam?)
-        if ((flags & 1) && !noReflections) { 
+        // 0x5D9B54 (EnvCam)
+        if ((flags & 1) && !noReflections) {
             RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, RWRSTATE(D3DTADDRESS_WRAP));
 
             // Set transform
@@ -337,7 +337,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
             RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
         }
 
-        // 0x5D9CB2 (EnvWave?)
+        // 0x5D9CB2 (EnvWave - The wavy texture on the sides of vehicles)
         if ((flags & 2) && !noReflections && (geo->flags & rpGEOMETRYTEXTURED2)) {
             RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, RWRSTATE(D3DTADDRESS_WRAP));
 
@@ -394,13 +394,12 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
                     v = 1.f - v;
                 }
                 const auto u = -env_map_atm->offsetU;
-
                 // Inline end
 
                 // 0x5D9D08 - Now set the texture transform matrix
                 D3DMATRIX transform{.m = {
-                    { 0.f, 0.f, 0.f, 0.f },
-                    { 0.f, 0.f, 0.f, 0.f },
+                    { 1.f, 0.f, 0.f, 0.f },
+                    { 0.f, 1.f, 0.f, 0.f },
                     { u,   v,   1.f, 0.f },
                     { 0.f, 0.f, 0.f, 1.f },
                 }};
@@ -432,76 +431,78 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
         if (geoHasNoLighting) { // 0x5D9E31 - Render without lighting
             RxD3D9InstanceDataRender(header, mesh);
-        } else if (isLightingEnabled) { // 0x5D9E3D
-            // Some car materials are initially painted over, so for those we use black (0, 0, 0) instead
-            const auto isSpecialColor = notsa::contains<uint32>({
-                0xAF00FF, // @ 0x5D9E6B
-                0x00FFB9, // @ 0x5D9E8D
-                0x00FF3C, // @ 0x5D9E84...
-                0x003CFF,
-                0x00AFFF,
-                0xC8FF00, // @ 0x5D9E9B...
-                0xFF00FF,
-                0xFFFF00, 
-            }, CRGBA{mat->color}.ToIntRGB());
-            const auto color = isSpecialColor
-                ? CRGBA{0, 0, 0, mat->color.alpha}
-                : CRGBA{mat->color};
+        } else {
+            if (isLightingEnabled) { // 0x5D9E3D
+                // Some car materials are initially painted over, so for those we use black (0, 0, 0) instead
+                const auto isSpecialColor = notsa::contains<uint32>({
+                    0xAF00FF, // @ 0x5D9E6B
+                    0x00FFB9, // @ 0x5D9E8D
+                    0x00FF3C, // @ 0x5D9E84...
+                    0x003CFF,
+                    0x00AFFF,
+                    0xC8FF00, // @ 0x5D9E9B...
+                    0xFF00FF,
+                    0xFFFF00,
+                }, CRGBA{mat->color}.ToIntRGB());
+                const auto color = isSpecialColor
+                    ? CRGBA{0, 0, 0, mat->color.alpha}
+                    : CRGBA{mat->color};
 
-            // 0x5DA790 - Create and set material using the calculated color
-            {
-                D3DMATERIAL9 m;
+                // 0x5DA790 - Create and set material using the calculated
+                 {
+                    D3DMATERIAL9 m;
 
-                m.Specular = { spec, spec, spec, 0.f };
-                m.Power = power;
+                    m.Specular = { spec, spec, spec, 0.f };
+                    m.Power = power;
 
-                const auto isPrelit = (rxGeoFlags & rxGEOMETRY_PRELIT) != 0;
-                if (!(rxGeoFlags & rxGEOMETRY_MODULATE) || color == CRGBA{0xFF, 0xFF, 0xFF, 0xFF}) { // 0x5DA7A9
-                    const auto d = mat->surfaceProps.diffuse;
-                    m.Diffuse = { d, d, d, 1.f };
+                    const auto isPrelit = (rxGeoFlags & rxGEOMETRY_PRELIT) != 0;
+                    if (!(rxGeoFlags & rxGEOMETRY_MODULATE) || color == CRGBA{0xFF, 0xFF, 0xFF, 0xFF}) { // 0x5DA7A9
+                        const auto d = mat->surfaceProps.diffuse;
+                        m.Diffuse = { d, d, d, 1.f };
 
-                    // 0x5DA9DC
-                    RwD3D9SetRenderState(D3DRS_AMBIENT, 0xFFFFFFFF); // Set to full white for maximum ambient light.
-                    RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);
+                        // 0x5DA9DC
+                        RwD3D9SetRenderState(D3DRS_AMBIENT, 0xFFFFFFFF); // Set to full white for maximum ambient light.
+                        RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);
 
-                    // 0x5DA9F3
-                    if (!isPrelit) {
-                        m.Emissive = { 0.f, 0.f, 0.f, 0.f };
+                        // 0x5DA9F3
+                        if (!isPrelit) {
+                            m.Emissive = { 0.f, 0.f, 0.f, 0.f };
+                        }
+                        RwD3D9SetRenderState(D3DRS_COLORVERTEX, isPrelit);
+                        RwD3D9SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, isPrelit ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
+
+                        // 0x5DAA4F - Skipping useless `ambient == 1` optimization
+                        m.Ambient.r = AmbientSaturated.red * mat->surfaceProps.ambient;
+                        m.Ambient.g = AmbientSaturated.green * mat->surfaceProps.ambient;
+                        m.Ambient.b = AmbientSaturated.blue * mat->surfaceProps.ambient;
+                    } else { // 0x5DA7E2
+                        const auto d = mat->surfaceProps.diffuse / 255.f;
+                        m.Diffuse = {
+                            (float)(color.r) * d,
+                            (float)(color.g) * d,
+                            (float)(color.b) * d,
+                            (float)(color.a) / 255.f
+                        };
+
+                        RwD3D9SetRenderState(D3DRS_AMBIENT, isPrelit ? color.ToIntARGB() : 0xFFFFFFFF);
+                        RwD3D9SetRenderState(D3DRS_COLORVERTEX, isPrelit);
+                        RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, isPrelit ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
+                        RwD3D9SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
+
+                        const auto amb = mat->surfaceProps.ambient / 255.f;
+                        (isPrelit ? m.Ambient : m.Emissive) = {0.f, 0.f, 0.f, 0.f};
+                        (isPrelit ? m.Emissive : m.Ambient) = {
+                            (float)color.r * AmbientSaturated.red * amb,
+                            (float)color.g * AmbientSaturated.green * amb,
+                            (float)color.b * AmbientSaturated.blue * amb,
+                        };
                     }
-                    RwD3D9SetRenderState(D3DRS_COLORVERTEX, isPrelit);
-                    RwD3D9SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, isPrelit ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
-
-                    // 0x5DAA4F - Skipping useless `ambient == 1` optimization
-                    m.Ambient.r = AmbientSaturated.red * mat->surfaceProps.ambient;
-                    m.Ambient.g = AmbientSaturated.green * mat->surfaceProps.ambient;
-                    m.Ambient.b = AmbientSaturated.blue * mat->surfaceProps.ambient;
-                } else { // 0x5DA7E2
-                    const auto d = mat->surfaceProps.diffuse / 255.f;
-                    m.Diffuse = {
-                        (float)(color.r) * d,
-                        (float)(color.g) * d,
-                        (float)(color.b) * d,
-                        (float)(color.a) / 255.f
-                    };
-
-                    RwD3D9SetRenderState(D3DRS_AMBIENT, isPrelit ? color.ToIntARGB() : 0xFFFFFFFF);
-                    RwD3D9SetRenderState(D3DRS_COLORVERTEX, isPrelit);
-                    RwD3D9SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, isPrelit ? D3DMCS_COLOR1 : D3DMCS_MATERIAL);
-                    RwD3D9SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
-
-                    const auto amb = mat->surfaceProps.ambient / 255.f;
-                    (isPrelit ? m.Ambient : m.Emissive) = {0.f, 0.f, 0.f, 0.f};
-                    (isPrelit ? m.Emissive : m.Ambient) = {
-                        (float)color.r * AmbientSaturated.red * amb,
-                        (float)color.g * AmbientSaturated.green * amb,
-                        (float)color.b * AmbientSaturated.blue * amb,
-                    };
+                    RwD3D9SetMaterial(&m);
                 }
-                RwD3D9SetMaterial(&m);
             }
-
             RxD3D9InstanceDataRenderLighting(header, mesh, rxGeoFlags, mesh->material->texture); // 0x5D9EEB
         }
+
 
         if (hasSpecular) {
             RwD3D9SetRenderState(D3DRS_SPECULARENABLE, FALSE);
