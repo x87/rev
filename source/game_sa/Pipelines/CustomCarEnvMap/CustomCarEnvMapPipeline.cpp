@@ -220,7 +220,12 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
 
     _rwD3D9EnableClippingIfNeeded(atomic, type);
 
-    const auto noReflections = (CVisibilityPlugins::GetAtomicId(atomic) & (ATOMIC_IS_BLOWN_UP|ATOMIC_DISABLE_REFLECTIONS)) != 0;
+    const auto atmFlags = CVisibilityPlugins::GetAtomicId(atomic);
+    const auto noReflections = (atmFlags & (ATOMIC_IS_BLOWN_UP | ATOMIC_DISABLE_REFLECTIONS)) != 0;
+
+    // Fixed blown up car rendering ("DarkVehiclesFix")
+    // Credit: SilentPatch
+    const auto isBlownUp = notsa::IsFixBugs() && (atmFlags & ATOMIC_IS_BLOWN_UP) && !(RpLightGetFlags(pDirect) & rpLIGHTLIGHTATOMICS);
 
     DWORD isLightingEnabled = 0;
     RwD3D9GetRenderState(D3DRS_LIGHTING, &isLightingEnabled);
@@ -260,7 +265,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
         // Calculate spec and power & set render states
         const auto hasSpecular = isLightingEnabled && (flags & 4) && (g_fx.GetFxQuality() >= FX_QUALITY_HIGH || !noReflections); // Specular lighting enabled?
         float spec, power;
-        if (hasSpecular) { // 0x5D9A7F - 0x5D9B25 (Inverted if)
+        if (hasSpecular && !isBlownUp) { // 0x5D9A7F - 0x5D9B25 (Inverted if)
             const auto specularity = GetFxSpecSpecularity(mat);
             spec  = std::min(1.f, specIntensity * specularity * 2.f);
             power = specularity * 100.f;
@@ -286,7 +291,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
         RwD3D9SetTextureStageState(2, D3DTSS_COLOROP, D3DTOP_DISABLE);
 
         // 0x5D9B54 (EnvCam)
-        if ((flags & 1) && !noReflections) {
+        if ((flags & 1) && !noReflections && !isBlownUp) {
             RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, RWRSTATE(D3DTADDRESS_WRAP));
 
             // Set transform
@@ -338,7 +343,7 @@ void CCustomCarEnvMapPipeline::CustomPipeRenderCB(RwResEntry* resEntry, void* ob
         }
 
         // 0x5D9CB2 (EnvWave - The wavy texture on the sides of vehicles)
-        if ((flags & 2) && !noReflections && (geo->flags & rpGEOMETRYTEXTURED2)) {
+        if ((flags & 2) && !noReflections && (geo->flags & rpGEOMETRYTEXTURED2) && !isBlownUp) {
             RwRenderStateSet(rwRENDERSTATETEXTUREADDRESS, RWRSTATE(D3DTADDRESS_WRAP));
 
             auto* const envMapAtmData = AllocEnvMapPipeAtomicData(atomic);
