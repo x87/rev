@@ -20,7 +20,7 @@ void CCustomCarEnvMapPipeline::InjectHooks() {
     RH_ScopedInstall(CustomPipeRenderCB, 0x5D9900);
     RH_ScopedInstall(pluginEnvAtmConstructorCB, 0x5D8D30);
     RH_ScopedInstall(pluginEnvAtmDestructorCB, 0x5D9730);
-    RH_ScopedInstall(pluginEnvAtmCopyConstructorCB, 0x5D9780, { .reversed = false });
+    RH_ScopedInstall(pluginEnvAtmCopyConstructorCB, 0x5D9780);
     RH_ScopedInstall(AllocEnvMapPipeAtomicData, 0x5D96F0);
     RH_ScopedInstall(pluginEnvMatConstructorCB, 0x5D8BD0);
     RH_ScopedInstall(pluginEnvMatDestructorCB, 0x5D95B0);

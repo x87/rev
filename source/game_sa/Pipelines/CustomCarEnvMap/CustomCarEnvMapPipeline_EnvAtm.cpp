@@ -19,7 +19,12 @@ void* CCustomCarEnvMapPipeline::pluginEnvAtmDestructorCB(void* object, int32 off
 
 // 0x5D9780
 void* CCustomCarEnvMapPipeline::pluginEnvAtmCopyConstructorCB(void* dstObject, const void* srcObject, int32 offsetInObject, int32 sizeInObject) {
-    return plugin::CallAndReturn<void*, 0x5D9780, void*, const void*, int32, int32>(dstObject, srcObject, offsetInObject, sizeInObject);
+    if (auto* const src = EnvMapAtmPlGetData((RpAtomic*)(srcObject))) {
+        if (auto* const dst = AllocEnvMapPipeAtomicData((RpAtomic*)(dstObject))) {
+            *dst = *src;
+        }
+    }
+    return dstObject;
 }
 
 // 0x5D96F0
