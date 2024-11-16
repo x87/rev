@@ -26,8 +26,7 @@ void CMaths::InitMathsTables() {
     }
 }
 
-void CMaths::InjectHooks()
-{
+void CMaths::InjectHooks() {
     RH_ScopedClass(CMaths);
     RH_ScopedCategoryGlobal();
 
