@@ -13,6 +13,7 @@
 #include "rw/rpmatfx.h"
 #include "rw/skeleton.h"
 #include "rw/rwplcore.h"
+#include <type_traits>
 
 #ifdef _DX9_SDK_INSTALLED
 #include "d3d9.h"

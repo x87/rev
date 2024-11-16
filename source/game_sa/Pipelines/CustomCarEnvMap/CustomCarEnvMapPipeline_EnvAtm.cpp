@@ -4,15 +4,18 @@
 
 // 0x5D8D30
 void* CCustomCarEnvMapPipeline::pluginEnvAtmConstructorCB(void* object, int32 offsetInObject, int32 sizeInObject) {
-    EnvMapAtmPlGetData(object) = nullptr;
+    auto* const self = static_cast<RpAtomic*>(object);
+
+    EnvMapAtmPlGetData(self) = nullptr;
     return object;
 }
 
 // 0x5D9730
 void* CCustomCarEnvMapPipeline::pluginEnvAtmDestructorCB(void* object, int32 offsetInObject, int32 sizeInObject) {
-    auto*& data = EnvMapAtmPlGetData(object);
-    if (data) {
-        m_gEnvMapPipeAtmDataPool->Delete(std::exchange(data, nullptr));
+    auto* const self = static_cast<RpAtomic*>(object);
+
+    if (auto* const data = std::exchange(EnvMapAtmPlGetData(self), nullptr)) {
+        m_gEnvMapPipeAtmDataPool->Delete(data);
     }
     return object;
 }
@@ -39,7 +42,7 @@ CustomEnvMapPipeAtomicData* CCustomCarEnvMapPipeline::AllocEnvMapPipeAtomicData(
 }
 
 void CCustomCarEnvMapPipeline::SetCustomEnvMapPipeAtomicDataDefaults(CustomEnvMapPipeAtomicData* data) {
-    data->offsetU = 0.0f;
-    data->prevPosY = 0.0f;
-    data->prevPosX = 0.0f;
+    data->OffsetU = 0.0f;
+    data->PrevPosY = 0.0f;
+    data->PrevPosX = 0.0f;
 }
