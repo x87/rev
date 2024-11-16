@@ -728,7 +728,7 @@ void CGame::Process() {
     CAudioZones::Update(false, TheCamera.GetPosition());
     CWindModifiers::Number = 0;
 
-    if (!CTimer::m_UserPause && !CTimer::m_CodePause) {
+    if (!CTimer::GetIsPaused()) {
         CSprite2d::SetRecipNearClip();
         CSprite2d::InitPerFrame();
         CFont::InitPerFrame();
@@ -795,7 +795,7 @@ void CGame::Process() {
         if (CReplay::ShouldStandardCameraBeProcessed()) {
             TheCamera.Process();
         } else {
-            TheCamera.CCamera::ProcessFade();
+            TheCamera.ProcessFade();
         }
 
         CCullZones::Update();
@@ -812,6 +812,12 @@ void CGame::Process() {
 
         CPlantMgr::Update(TheCamera.GetPosition());
         CCustomBuildingRenderer::Update();
+
+        CStencilShadows::RenderBuffer({
+            CTimeCycle::m_fShadowFrontX[CTimeCycle::m_CurrentStoredValue] * 2.f,
+            CTimeCycle::m_fShadowFrontY[CTimeCycle::m_CurrentStoredValue] * 2.f,
+            -1.5f
+        });
 
         CStencilShadows::Process(TheCamera.GetPosition());
         if (CReplay::Mode != MODE_PLAYBACK) {
