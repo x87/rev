@@ -82,7 +82,7 @@ CTask* CTaskComplexUseAttractor::CreateFirstSubTask(CPed* ped) {
                 return nullptr;
             }
 
-            if (const auto entity = m_attractor->m_Entity) {
+            if (CEntity* const entity = m_attractor->m_Entity) {
                 if (!entity->IsObject() || entity->AsObject()->objectFlags.bEnableDisabledAttractors) {
                     CTheScripts::ScriptsForBrains.StartAttractorScriptBrainWithThisName(m_attractor->m_ScriptName, ped, ped->bUseAttractorInstantly);
                     CScriptedBrainTaskStore::Clear(ped);
@@ -114,7 +114,7 @@ CTask* CTaskComplexUseAttractor::CreateFirstSubTask(CPed* ped) {
 // 0x6327C0
 CTask* CTaskComplexUseAttractor::ControlSubTask(CPed* ped) {
     if (m_attractor->m_Entity) {
-        if (const auto entity = m_attractor->m_Entity) {
+        if (CEntity* const entity = m_attractor->m_Entity) {
             if (entity->IsObject() || entity->AsObject()->objectFlags.bIsBroken) {
                 m_pSubTask->MakeAbortable(ped, ABORT_PRIORITY_LEISURE, nullptr);
             }
