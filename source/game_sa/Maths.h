@@ -1,8 +1,6 @@
 #pragma once
 #include <common.h>
 
-constexpr float RadToSinTableIndex = 256.0f / TWO_PI;
-
 class CMaths {
 public:
     static void InjectHooks();

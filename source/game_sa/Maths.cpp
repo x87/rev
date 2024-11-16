@@ -2,12 +2,12 @@
 
 #include "Maths.h"
 
-constexpr size_t LUT_SIZE = 256;
-auto& ms_SinTable = StaticRef<std::array<float, LUT_SIZE>>(0xBB4200); // This is the correct address, not `0xBB3DFC`
+constexpr size_t SIN_LUT_SIZE = 256;
+auto& ms_SinTable = StaticRef<std::array<float, SIN_LUT_SIZE>>(0xBB4200); // This is the correct address, not `0xBB3DFC`
 
 constexpr auto RadToSinTableIndex(float rad) {
     assert(rad >= 0.f && rad <= 2.f * PI);
-    return (uint32)(rad * ((float)(LUT_SIZE) / TWO_PI)) % LUT_SIZE;
+    return (uint32)(rad * ((float)(SIN_LUT_SIZE) / TWO_PI)) % SIN_LUT_SIZE;
 }
 
 float CMaths::GetSinFast(float rad) {
@@ -21,8 +21,8 @@ float CMaths::GetCosFast(float rad) {
 void CMaths::InitMathsTables() {
     ZoneScoped;
 
-    for (size_t i = 0; i < LUT_SIZE; ++i) {
-        ms_SinTable[i] = std::sin((float)(i) * ((2.f * PI) / LUT_SIZE));
+    for (size_t i = 0; i < SIN_LUT_SIZE; ++i) {
+        ms_SinTable[i] = std::sin((float)(i) * ((2.f * PI) / SIN_LUT_SIZE));
     }
 }
 
