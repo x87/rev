@@ -31,6 +31,7 @@
 #include "./AudioZonesDebugModule.h"
 #include "./WeaponDebugModule.hpp"
 #include "./CheckpointsDebugModule.hpp"
+#include "./BugsDebugModule.hpp"
 
 DebugModules::DebugModules(ImGuiContext* ctx) :
     m_ImCtx(ctx)
@@ -86,6 +87,7 @@ void DebugModules::CreateModules() {
     // "Settings" menu
     Add<HooksDebugModule>();
     Add<PostEffectsDebugModule>();
+    Add<notsa::debugmodules::BugsDebugModule>();
 
     // "Visualization" menu
     Add<CollisionDebugModule>();
