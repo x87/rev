@@ -53,6 +53,9 @@ struct RwResEntrySA : RwResEntry {
     RxD3D9InstanceData meshData;
 };
 
+
+void RwCoreInjectHooks();
+
 template<typename T>
 inline T RwStreamRead(RwStream* stream, size_t size = sizeof(T)) {
     T data;
