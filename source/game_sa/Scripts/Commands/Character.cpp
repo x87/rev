@@ -1472,6 +1472,8 @@ CVehicle* StoreCarCharIsAttachedToNoSave(CPed* ped) {
 }
 
 void notsa::script::commands::character::RegisterHandlers() {
+    REGISTER_COMMAND_HANDLER_BEGIN("Char");
+
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_PROOFS, SetCharProofs);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_VELOCITY, SetCharVelocity);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_CHAR_VELOCITY, GetCharVelocity);

@@ -4,6 +4,7 @@
 #include "ReversibleHooks.h"
 #include "ReversibleHook/Simple.h"
 #include "ReversibleHook/Virtual.h"
+#include "ReversibleHook/ScriptCommand.h"
 #include "RootHookCategory.h"
 #include <fstream>
 
@@ -112,6 +113,13 @@ void InstallVirtual(std::string_view category, std::string fnName, void** vtblGT
 
 void AddItemToCategory(std::string_view category, std::shared_ptr<ReversibleHook::Base> item) {
     s_RootCategory.AddItemToNamedCategory(category, std::move(item));
+}
+
+void InstallScriptCommand(std::string_view category, eScriptCommands cmd) {
+    AddItemToCategory( \
+        category,
+        std::make_shared<ReversibleHooks::ReversibleHook::ScriptCommand>(cmd)
+    );
 }
 
 void WriteHooksToFile(const std::filesystem::path& file) {
