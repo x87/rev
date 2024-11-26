@@ -123,7 +123,7 @@ void CAnimBlendSequence::RemoveQuaternionFlips() const {
 
 // 0x4D0C50
 void CAnimBlendSequence::SetName(const char* name) {
-    if (notsa::bugfixes::CAnimBlendSequence_SetName_SetBoneTagFlag) {
+    if (notsa::bugfixes::AnimBlendSequence_SetName_SetBoneTagFlag) {
         m_IsUsingBoneTag = false;
     }
     m_NameHashKey = CKeyGen::GetUppercaseKey(name);
