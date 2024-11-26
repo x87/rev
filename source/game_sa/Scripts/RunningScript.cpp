@@ -486,10 +486,9 @@ void CRunningScript::SetCharCoordinates(CPed& ped, CVector posn, bool warpGang, 
 
 // 0x463CA0
 tScriptParam* CRunningScript::GetPointerToLocalVariable(int32 varIndex) {
-    if (m_bIsMission)
-        return reinterpret_cast<tScriptParam*>(&CTheScripts::LocalVariablesForCurrentMission[varIndex]);
-    else
-        return reinterpret_cast<tScriptParam*>(&m_aLocalVars[varIndex]);
+    return m_bIsMission
+        ? reinterpret_cast<tScriptParam*>(&CTheScripts::LocalVariablesForCurrentMission[varIndex])
+        : reinterpret_cast<tScriptParam*>(&m_aLocalVars[varIndex]);
 }
 
 /*!
@@ -709,7 +708,8 @@ void CRunningScript::StoreParameters(int16 count) {
         }
         case SCRIPT_PARAM_GLOBAL_NUMBER_ARRAY:
             ReadArrayInformation(true, &arrVarOffset, &arrElemIdx);
-            *reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[arrVarOffset + 4 * arrElemIdx]) = ScriptParams[i].iParam;
+            GetPointerToGlobalArrayElement(arrVarOffset, arrElemIdx, 1)->iParam = ScriptParams[i].iParam;
+            //*reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[arrVarOffset + 4 * arrElemIdx]) = ScriptParams[i].iParam;
             break;
         case SCRIPT_PARAM_LOCAL_NUMBER_ARRAY:
             ReadArrayInformation(true, &arrVarOffset, &arrElemIdx);
@@ -722,18 +722,12 @@ void CRunningScript::StoreParameters(int16 count) {
 // Reads array var base offset and element index from index variable.
 // 0x463CF0
 void CRunningScript::ReadArrayInformation(int32 updateIP, uint16* outArrayBase, int32* outArrayIndex) {
-    auto* ip = m_IP;
+    *outArrayBase = ReadAtIPAs<uint16>(updateIP);
 
-    *outArrayBase = CTheScripts::Read2BytesFromScript(ip);
-
-    const auto varIdx = CTheScripts::Read2BytesFromScript(ip);
-    *outArrayIndex = CTheScripts::Read2BytesFromScript(ip) < 0 // Check MSB
+    const auto varIdx = ReadAtIPAs<uint16>(updateIP);
+    *outArrayIndex = ReadAtIPAs<int16>(updateIP) < 0
         ? GetPointerToGlobalVariable(varIdx)->iParam
         : GetPointerToLocalVariable(varIdx)->iParam;
-
-    if (updateIP) {
-        m_IP = ip;
-    }
 }
 
 // Collects parameters and puts them to local variables of new script
