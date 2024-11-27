@@ -27,19 +27,19 @@ SetCatOrItemStateResult SetCategoryOrItemStateByPath(std::string_view path, bool
         path.remove_suffix(1);
     }
 
-    const auto    seperated = SplitStringView(path, "/") | rng::to<std::vector>();
+    const auto    separated = SplitStringView(path, "/") | rng::to<std::vector>();
     HookCategory* cat       = &GetRootCategory();
-    for (auto name : std::span(seperated).first(seperated.size() - 1)) {
+    for (auto name : std::span(separated).first(separated.size() - 1)) {
         cat = cat->FindSubcategory(name);
         if (!cat) {
             return SetCatOrItemStateResult::NotFound;
         }
     }
 
-    if (auto category = cat->FindSubcategory(seperated.back())) {
+    if (auto category = cat->FindSubcategory(separated.back())) {
         category->SetAllItemsEnabled(enabled);
         return SetCatOrItemStateResult::Done;
-    } else if (auto item = cat->FindItem(seperated.back())) {
+    } else if (auto item = cat->FindItem(separated.back())) {
         if (item->Hooked() == enabled) {
             return SetCatOrItemStateResult::Done;
         }
@@ -118,7 +118,7 @@ void AddItemToCategory(std::string_view category, std::shared_ptr<ReversibleHook
 void InstallScriptCommand(std::string_view category, eScriptCommands cmd) {
     AddItemToCategory( \
         category,
-        std::make_shared<ReversibleHooks::ReversibleHook::ScriptCommand>(cmd)
+        std::make_shared<ReversibleHook::ScriptCommand>(cmd)
     );
 }
 
