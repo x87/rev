@@ -1,10 +1,12 @@
 #include "StdInc.h"
 #include <unordered_set>
 
+#ifdef ENABLE_SCRIPT_COMMAND_HOOKS
+#include "ReversibleHook/ScriptCommand.h"
+#endif
 #include "ReversibleHooks.h"
 #include "ReversibleHook/Simple.h"
 #include "ReversibleHook/Virtual.h"
-#include "ReversibleHook/ScriptCommand.h"
 #include "RootHookCategory.h"
 #include <fstream>
 
@@ -115,12 +117,14 @@ void AddItemToCategory(std::string_view category, std::shared_ptr<ReversibleHook
     s_RootCategory.AddItemToNamedCategory(category, std::move(item));
 }
 
+#ifdef ENABLE_SCRIPT_COMMAND_HOOKS
 void InstallScriptCommand(std::string_view category, eScriptCommands cmd) {
     AddItemToCategory( \
         category,
-        std::make_shared<ReversibleHook::ScriptCommand>(cmd)
+        std::make_shared<::ReversibleHooks::ReversibleHook::ScriptCommand>(cmd)
     );
 }
+#endif
 
 void WriteHooksToFile(const std::filesystem::path& file) {
     std::ofstream of{ file };
