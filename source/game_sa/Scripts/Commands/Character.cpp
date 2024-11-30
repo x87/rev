@@ -209,12 +209,14 @@ auto StoreCarCharIsIn(CRunningScript& S, CPed& ped) { // 0x469481
 
     if (GetVehiclePool()->GetRef(veh) != CTheScripts::StoreVehicleIndex && S.m_bUseMissionCleanup) {
         // Unstore previous (If it still exists)
-        if (const auto stored = GetVehiclePool()->GetAt(CTheScripts::StoreVehicleIndex)) {
-            CCarCtrl::RemoveFromInterestingVehicleList(stored);
-            if (stored->IsMissionVehicle() && CTheScripts::StoreVehicleWasRandom) {
-                stored->SetVehicleCreatedBy(RANDOM_VEHICLE);
-                stored->vehicleFlags.bIsLocked = false;
-                CTheScripts::MissionCleanUp.RemoveEntityFromList(CTheScripts::StoreVehicleIndex, MISSION_CLEANUP_ENTITY_TYPE_VEHICLE);
+        if (CTheScripts::StoreVehicleIndex != -1) { // NOTSA: Bugfix
+            if (const auto stored = GetVehiclePool()->GetAt(CTheScripts::StoreVehicleIndex)) {
+                CCarCtrl::RemoveFromInterestingVehicleList(stored);
+                if (stored->IsMissionVehicle() && CTheScripts::StoreVehicleWasRandom) {
+                    stored->SetVehicleCreatedBy(RANDOM_VEHICLE);
+                    stored->vehicleFlags.bIsLocked = false;
+                    CTheScripts::MissionCleanUp.RemoveEntityFromList(CTheScripts::StoreVehicleIndex, MISSION_CLEANUP_ENTITY_TYPE_VEHICLE);
+                }
             }
         }
 
@@ -709,7 +711,7 @@ auto IsCurrentCharWeapon(CPed& ped, eWeaponType wep) {
 }
 
 // GET_RANDOM_CHAR_IN_ZONE
-auto GetRandomCharInZone(CRunningScript& S, std::string_view zoneName, bool civillian, bool gang, bool criminal) -> CPed* { // 0x04802D0
+auto GetRandomCharInZone(CRunningScript& S, std::string_view zoneName, bool civilian, bool gang, bool criminal) -> CPed* { // 0x04802D0
     const auto playerPosZ = FindPlayerCoors().z;
     for (auto& ped : GetPedPool()->GetAllValid()) {
         const auto pedHandle = GetPedPool()->GetRef(&ped);
@@ -719,7 +721,7 @@ auto GetRandomCharInZone(CRunningScript& S, std::string_view zoneName, bool civi
             || ped.bFadeOut
             || ped.IsStateDeadForScript()
             || ped.IsInVehicle()
-            || !S.ThisIsAValidRandomPed(ped.m_nPedType, civillian, gang, criminal)
+            || !S.ThisIsAValidRandomPed(ped.m_nPedType, civilian, gang, criminal)
             || ped.GetGroup()
         ) {
             continue;
@@ -1472,6 +1474,8 @@ CVehicle* StoreCarCharIsAttachedToNoSave(CPed* ped) {
 }
 
 void notsa::script::commands::character::RegisterHandlers() {
+    REGISTER_COMMAND_HANDLER_BEGIN("Char");
+
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_PROOFS, SetCharProofs);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_CHAR_VELOCITY, SetCharVelocity);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_CHAR_VELOCITY, GetCharVelocity);

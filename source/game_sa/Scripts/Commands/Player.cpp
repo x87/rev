@@ -115,6 +115,8 @@ bool IsPlayerTouchingObjectOnFoot(CPlayerPed& player, CObject& object) {
 //}
 
 void notsa::script::commands::player::RegisterHandlers() {
+    REGISTER_COMMAND_HANDLER_BEGIN("Player");
+
     REGISTER_COMMAND_HANDLER(COMMAND_CREATE_PLAYER, CreatePlayer);
     REGISTER_COMMAND_HANDLER(COMMAND_GET_PLAYER_COORDINATES, GetPlayerCoordinates);
     REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_IN_AREA_2D, IsPlayerInArea2D);
