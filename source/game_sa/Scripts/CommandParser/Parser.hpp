@@ -105,19 +105,20 @@ constexpr inline auto AddressOfFunction(T fn) {
 };
 };
 
+//! Register a custom command handler
+#ifdef ENABLE_SCRIPT_COMMAND_HOOKS
 //! Use this before calling any of the 
 #define REGISTER_COMMAND_HANDLER_BEGIN(_namespace) \
     RH_ScopedCategory("Scripts/Commands") \
     RH_ScopedNamespaceName(_namespace)
-
-//! Register a custom command handler
-#ifdef ENABLE_SCRIPT_COMMAND_HOOKS
 #define REGISTER_COMMAND_HANDLER(cmd, fn) \
     do { \
         ::notsa::script::detail::AddCommandHandler<cmd, ::notsa::detail::AddressOfFunction(fn)>(); \
         RH_ScopedInstallScriptCommand(cmd); \
     } while (0)
 #else
+#define REGISTER_COMMAND_HANDLER_BEGIN(_namespace) \
+    ((void)(_namespace))
 #define REGISTER_COMMAND_HANDLER(cmd, fn) \
     ::notsa::script::detail::AddCommandHandler<cmd, ::notsa::detail::AddressOfFunction(fn)>()
 #endif
