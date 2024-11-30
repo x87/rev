@@ -11,9 +11,9 @@ struct ReversibleBugFix {
     constexpr operator bool() const { return Enabled; }
 
 public:
-    std::string       Name{};                            //!< User-defined name
-    std::string       Description{};                     //!< User defined description
-    std::string       Credit{};                          //!< Credits for this bugfix
+    std::string_view  Name{};                            //!< User-defined name
+    std::string_view  Description{};                     //!< User defined description
+    std::string_view  Credit{};                          //!< Credits for this bugfix
     bool              Enabled{ true };                   //!< Is this bugfix enabled? (If not, the bug is present)
     bool              Locked{ false };                   //!< Can this bugfix's enabled state be changed?
     ReversibleBugFix* Prev{ std::exchange(Tail, this) }; //!< Linked list of bugfixes (Maintained for the debug tool)
