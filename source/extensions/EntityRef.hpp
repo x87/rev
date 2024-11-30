@@ -1,7 +1,6 @@
 #pragma once
 
-class CEntity;
-
+#include <Entity.h>
 namespace notsa {
 //! Wrapper for entity references, avoids manual usage of `CleanupOldRef` and `RegisterRef`
 template<typename T>
