@@ -160,26 +160,26 @@ void CRunningScript::InjectCustomCommandHooks() {
 // 0x4648E0
 void CRunningScript::Init() {
     SetName("noname");
-    m_BaseIP = nullptr;
-    m_pPrev = nullptr;
-    m_pNext = nullptr;
-    m_IP = nullptr;
     rng::fill(m_IPStack, nullptr);
-    m_StackDepth = 0;
-    m_WakeTime = 0;
-    m_IsActive = false;
-    m_CondResult = false;
-    m_UsesMissionCleanup = false;
-    m_IsExternal = false;
-    m_IsTextBlockOverride = false;
-    m_ExternalType = -1;
-    rng::fill(m_LocalVars, tScriptParam{0});
-    m_AndOrState = 0;
-    m_NotFlag = false;
-    m_DoneDeathArrest = false;
-    m_SceneSkipIP = nullptr;
+    rng::fill(m_LocalVars, tScriptParam{ 0 });
+    m_BaseIP                          = nullptr;
+    m_pPrev                           = nullptr;
+    m_pNext                           = nullptr;
+    m_IP                              = nullptr;
+    m_StackDepth                      = 0;
+    m_WakeTime                        = 0;
+    m_IsActive                        = false;
+    m_CondResult                      = false;
+    m_UsesMissionCleanup              = false;
+    m_IsExternal                      = false;
+    m_IsTextBlockOverride             = false;
+    m_ExternalType                    = -1;
+    m_AndOrState                      = 0;
+    m_NotFlag                         = false;
+    m_DoneDeathArrest                 = false;
+    m_SceneSkipIP                     = nullptr;
     m_ThisMustBeTheOnlyMissionRunning = false;
-    m_IsDeathArrestCheckEnabled = true;
+    m_IsDeathArrestCheckEnabled       = true;
 }
 
 /*!
