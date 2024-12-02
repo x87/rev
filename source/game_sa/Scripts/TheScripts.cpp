@@ -18,6 +18,8 @@
 
 static inline bool gAllowScriptedFixedCameraCollision = false;
 
+static inline auto& ScriptsArray = *(std::array<CRunningScript, MAX_NUM_SCRIPTS>*)0xA8B430;
+
 void CTheScripts::InjectHooks() {
     // Has to have these, because there seems to be something going on with the variable init order
     // For now I just changed it to use static addresses, not sure whats going on..

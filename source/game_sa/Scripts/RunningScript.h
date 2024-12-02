@@ -11,6 +11,8 @@
 #include "eWeaponType.h"
 #include "Ped.h"
 #include "CommandParser/Utility.hpp"
+#include "./ScriptParam.h"
+#include "./TheScripts.h"
 
 enum ePedType : uint32;
 
@@ -76,24 +78,6 @@ enum eButtonId : uint16 {
     BUTTON_RIGHTSHOCK,
 };
 
-// *** 🤝 UNION 🤝 ***
-union tScriptParam {
-    uint8  u8Param;
-    int8   i8Param;
-
-    uint16 u16Param;
-    int16  i16Param;
-
-    uint32 uParam{0u};
-    int32  iParam;
-
-    float  fParam;
-    void*  pParam;
-    char*  szParam;
-    bool   bParam;
-};
-VALIDATE_SIZE(tScriptParam, 0x4);
-
 static inline std::array<tScriptParam, 32>& ScriptParams = *(std::array<tScriptParam, 32>*)0xA43C78;
 
 enum {
@@ -104,6 +88,54 @@ enum {
 
 constexpr auto SHORT_STRING_SIZE = 8;
 constexpr auto LONG_STRING_SIZE = 16;
+
+namespace scm {
+using ShortString = char[SHORT_STRING_SIZE];
+using LongString = char[LONG_STRING_SIZE];
+
+/** See https://gtamods.com/wiki/SCM_Instruction#Arrays */
+struct ArrayAccess {
+    enum class ElementType : uint8 {
+        INT,
+        FLOAT,
+        STRING_SHORT,
+        STRING_LONG
+    };
+    template<typename T>
+    static constexpr auto GetElementTypeOf() {
+        if constexpr (std::is_integral_v<T>) {
+            return scm::ArrayAccess::ElementType::INT;
+        } else if constexpr (std::is_same_v<T, float>) {
+            return scm::ArrayAccess::ElementType::FLOAT;
+        } else if constexpr (std::is_same_v<T, ShortString>) {
+            return scm::ArrayAccess::ElementType::STRING_SHORT;
+        } else if constexpr (std::is_same_v<T, LongString>) {
+            return scm::ArrayAccess::ElementType::STRING_LONG;
+        }
+    }
+
+    /** Array base offset (Address of the first value) */
+    uint16 ArrayBase;
+    /** Location of the index variable used to access the array (May be a global or local variable, see `IdxVarIsGlobal`) */
+    uint16 IdxVarLoc;
+    /** Array total size (length) (TODO: Is this actually signed?) */
+    int8 ArraySize;
+    /** Array elements type */
+    ElementType ElemType: 7;
+    /** Index is a global variable (true) or a local variable (false) */
+    bool IdxVarIsGlobal: 1;
+};
+VALIDATE_SIZE(ArrayAccess, 0x6);
+
+/** Represents an instruction, see https://gtamods.com/wiki/SCM_Instruction#Instruction_format */
+struct Instruction {
+    /** The command */
+    eScriptCommands Command : 15;
+    /** Whenever the boolean return value of the command should be negated */
+    uint16 NotFlag : 1;
+};
+VALIDATE_SIZE(Instruction, 0x2);
+};
 
 class CRunningScript {
 public:
@@ -165,7 +197,7 @@ public:
     int8            m_nExternalType;
     int32           m_nWakeTime;                    //< Used for sleep-like comamands (like `COMMAND_WAIT`) - The script halts execution until the time is reached
     uint16          m_nLogicalOp;                   //< Next logical OP type (See `COMMAND_ANDOR`)
-    bool            m_bNotFlag;                     //< Condition result is to be negated (Unsure)
+    bool            m_bNotFlag;                     //< Boolean value returned by the called command should be negated
     bool            m_bDeathArrestEnabled;
     bool            m_bDeathArrestExecuted;
     uint8*          m_pSceneSkipIP;                 //< Scene skip instruction pointer (Unsure)
@@ -256,14 +288,52 @@ public:
     //! Refer to `IsPositionWithinQuad2D` for information on how this works
     void HighlightImportantAngledArea(uint32 id, CVector2D a, CVector2D b, CVector2D c, CVector2D d);
 
-    //! Read a value from at the current IP then increase IP by the number of bytes read.
+    //! Get value at IP
     template<typename T>
-    T ReadAtIPAs(bool updateIP = true) {
-        const auto ret = *reinterpret_cast<T*>(m_IP);
+    T& GetAtIPAs(bool updateIP = true, size_t sz = sizeof(T)) {
+        T& ret = *reinterpret_cast<T*>(m_IP);
         if (updateIP) {
-            m_IP += sizeof(T);
+            m_IP += sz;
         }
         return ret;
+    }
+
+    //! Get local variable
+    template<typename T>
+    T& GetLocal(size_t loc) {
+        return reinterpret_cast<T&>(m_bIsMission ? CTheScripts::LocalVariablesForCurrentMission[loc] : m_aLocalVars[loc]);
+    }
+
+    //! Get value from local array
+    template<typename T>
+    T& GetArrayLocal(size_t base, size_t idx) {
+        return GetLocal<T>(base + idx * std::min<size_t>(1, sizeof(T) / sizeof(tScriptParam)));
+    }
+
+    //! Get global variable
+    template<typename T>
+    T& GetGlobal(size_t loc) {
+        return reinterpret_cast<T&>(CTheScripts::ScriptSpace[loc]);
+    }
+
+    //! Get value from global array
+    template<typename T>
+    T& GetArrayGlobal(size_t base, size_t idx) {
+        return GetGlobal<T>(base + idx * sizeof(T));
+    }
+
+    //! Perform array access (Increments IP)
+    template<typename T>
+    T& ReadAtIPFromArray(bool isGlobalArray) {
+        const auto op = GetAtIPAs<scm::ArrayAccess>();
+        VERIFY(op.ElemType == scm::ArrayAccess::GetElementTypeOf<T>());
+        const auto idx = op.IdxVarIsGlobal
+            ? GetGlobal<int32>(op.IdxVarLoc)
+            : GetLocal<int32>(op.IdxVarLoc);
+        VERIFY(idx >= 0 && idx < op.ArraySize);
+        return isGlobalArray
+            ? GetArrayGlobal<T>(op.ArrayBase, (size_t)(idx))
+            : GetArrayLocal<T>(op.ArrayBase, (size_t)(idx));
     }
 
     //! Return the custom command handler of a function (or null) as a reference

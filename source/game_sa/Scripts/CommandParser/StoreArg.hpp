@@ -36,11 +36,11 @@ inline void StoreArg(CRunningScript* S, const T& arg) { // Add requirements to f
             return std::invoke(GetArrayElement, S, base, idx, 1);
         };
 
-        switch (const auto t = S->ReadAtIPAs<int8>()) {
+        switch (const auto t = S->GetAtIPAs<int8>()) {
         case SCRIPT_PARAM_GLOBAL_NUMBER_VARIABLE:
-            return S->GetPointerToGlobalVariable(S->ReadAtIPAs<uint16>());
+            return S->GetPointerToGlobalVariable(S->GetAtIPAs<uint16>());
         case SCRIPT_PARAM_LOCAL_NUMBER_VARIABLE:
-            return S->GetPointerToLocalVariable(S->ReadAtIPAs<uint16>());
+            return S->GetPointerToLocalVariable(S->GetAtIPAs<uint16>());
         case SCRIPT_PARAM_GLOBAL_NUMBER_ARRAY:
             return GetFromArray(&CRunningScript::GetPointerToGlobalArrayElement);
         case SCRIPT_PARAM_LOCAL_NUMBER_ARRAY:
