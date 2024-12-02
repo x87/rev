@@ -160,26 +160,26 @@ void CRunningScript::InjectCustomCommandHooks() {
 // 0x4648E0
 void CRunningScript::Init() {
     SetName("noname");
-    m_pBaseIP = nullptr;
+    m_BaseIP = nullptr;
     m_pPrev = nullptr;
     m_pNext = nullptr;
     m_IP = nullptr;
-    memset(m_IPStack, 0, sizeof(m_IPStack));
+    rng::fill(m_IPStack, nullptr);
     m_StackDepth = 0;
-    m_nWakeTime = 0;
-    m_bIsActive = false;
-    m_bCondResult = false;
-    m_bUseMissionCleanup = false;
-    m_bIsExternal = false;
-    m_bTextBlockOverride = false;
-    m_nExternalType = -1;
-    memset(m_aLocalVars, 0, sizeof(m_aLocalVars));
-    m_nLogicalOp = 0;
-    m_bNotFlag = false;
-    m_bDeathArrestExecuted = false;
-    m_pSceneSkipIP = nullptr;
-    m_bIsMission = false;
-    m_bDeathArrestEnabled = true;
+    m_WakeTime = 0;
+    m_IsActive = false;
+    m_CondResult = false;
+    m_UsesMissionCleanup = false;
+    m_IsExternal = false;
+    m_IsTextBlockOverride = false;
+    m_ExternalType = -1;
+    rng::fill(m_LocalVars, tScriptParam{0});
+    m_AndOrState = 0;
+    m_NotFlag = false;
+    m_DoneDeathArrest = false;
+    m_SceneSkipIP = nullptr;
+    m_ThisMustBeTheOnlyMissionRunning = false;
+    m_IsDeathArrestCheckEnabled = true;
 }
 
 /*!
@@ -252,14 +252,14 @@ void CRunningScript::GivePedScriptedTask(int32 pedHandle, CTask* task, int32 opc
     CPedGroup* pedGroup = CPedGroups::GetPedsGroup(ped);
 
     CPed* otherPed = nullptr;
-    if (m_nExternalType == 5 || m_nExternalType == 2 || !m_nExternalType || m_nExternalType == 3) {
+    if (m_ExternalType == 5 || m_ExternalType == 2 || !m_ExternalType || m_ExternalType == 3) {
         auto* localVariable = reinterpret_cast<int32*>(GetPointerToLocalVariable(0));
         otherPed = GetPedPool()->GetAtRef(*localVariable);
     }
 
     if (ped->bHasAScriptBrain && otherPed != ped) {
         delete task;
-    } else if (otherPed && m_nExternalType == 5) {
+    } else if (otherPed && m_ExternalType == 5) {
         if (CScriptedBrainTaskStore::SetTask(ped, task)) {
             const int32 slot = CPedScriptedTaskRecord::GetVacantSlot();
             CPedScriptedTaskRecord::ms_scriptedTasks[slot].SetAsAttractorScriptTask(ped, opcode, task);
@@ -381,7 +381,7 @@ bool CRunningScript::ThisIsAValidRandomPed(ePedType pedType, bool civilian, bool
 
 // 0x485A50
 void CRunningScript::DoDeathArrestCheck() {
-    if (!m_bDeathArrestEnabled)
+    if (!m_IsDeathArrestCheckEnabled)
         return;
 
     if (!CTheScripts::IsPlayerOnAMission())
@@ -402,8 +402,8 @@ void CRunningScript::DoDeathArrestCheck() {
     m_IP = m_IPStack[--m_StackDepth];
     CMessages::ClearSmallMessagesOnly();
     CTheScripts::ScriptSpace[CTheScripts::OnAMissionFlag] = 0;
-    m_bDeathArrestExecuted = true;
-    m_nWakeTime = 0;
+    m_DoneDeathArrest = true;
+    m_WakeTime = 0;
 }
 
 // 0x464F50
@@ -498,23 +498,20 @@ void CRunningScript::SetCharCoordinates(CPed& ped, CVector posn, bool warpGang, 
 }
 
 // 0x463CA0
-tScriptParam* CRunningScript::GetPointerToLocalVariable(int32 varIndex) {
-    if (m_bIsMission)
-        return reinterpret_cast<tScriptParam*>(&CTheScripts::LocalVariablesForCurrentMission[varIndex]);
-    else
-        return reinterpret_cast<tScriptParam*>(&m_aLocalVars[varIndex]);
+tScriptParam* CRunningScript::GetPointerToLocalVariable(int32 loc) {
+    return &GetLocal<tScriptParam>(loc);
 }
 
 /*!
  * @addr 0x463CC0
  * @brief Returns pointer to a local script variable.
  *
- * @param arrayBaseOffset  The offset of the array (In terms of the number of `tScriptParam`s before it)
- * @param index            Index of the variable inside the array
- * @param arrayEntriesSize Size of 1 variable in the array (In terms of `tScriptParam`'s - So for a regular `int` (or float, etc) variable this will be `1`, for long strings it's `4` and for short one's it's `2`)
+ * @param arrayBaseOffset          The offset of the array
+ * @param index                    Index of the variable inside the array
+ * @param arrayEntriesSizeAsParams Size of 1 variable in the array (In terms of `tScriptParam`'s - So for a regular `int` (or float, etc) variable this will be `1`, for long strings it's `4` and for short one's it's `2`)
  */
-tScriptParam* CRunningScript::GetPointerToLocalArrayElement(int32 arrayBaseOffset, uint16 index, uint8 arrayEntriesSizeInDWords) {
-    return GetPointerToLocalVariable(arrayBaseOffset + arrayEntriesSizeInDWords * index);
+tScriptParam* CRunningScript::GetPointerToLocalArrayElement(int32 arrayBaseOffset, uint16 index, uint8 arrayEntriesSizeAsParams) {
+    return &GetArrayLocal<tScriptParam>(arrayBaseOffset, index, arrayEntriesSizeAsParams);
 }
 
 /*!
@@ -569,25 +566,6 @@ tScriptParam* CRunningScript::GetPointerToScriptVariable(eScriptVariableType) {
     default:
         NOTSA_UNREACHABLE();
     }
-}
-
-/*!
- * @notsa
- */
-tScriptParam* CRunningScript::GetPointerToGlobalVariable(int32 varOffset) {
-    return reinterpret_cast<tScriptParam*>(&CTheScripts::ScriptSpace[varOffset]);
-}
-
-/*!
- * @notsa
- * @brief Returns pointer to a global script variable.
- *
- * @param arrayBaseOffset  The offset of the array (In terms of the number of `tScriptParam`s before it, so, bytes * 4)
- * @param index            Index of the variable inside the array
- * @param arrayEntriesSize Size of 1 variable in the array (In terms of `tScriptParam`'s - So for a regular `int` (or float, etc) variable this will be `1`, for long strings it's `4` and for short one's it's `2`)
- */
-tScriptParam* CRunningScript::GetPointerToGlobalArrayElement(int32 arrBase, uint16 arrIdx, uint8 arrayEntriesSizeAsParams) {
-    return reinterpret_cast<tScriptParam*>(&CTheScripts::ScriptSpace[arrBase + arrIdx * (arrayEntriesSizeAsParams * sizeof(tScriptParam))]);
 }
 
 /*!
@@ -752,36 +730,36 @@ void CRunningScript::ReadParametersForNewlyStartedScript(CRunningScript* newScri
     for (int i = 0; type != SCRIPT_PARAM_END_OF_ARGUMENTS; type = CTheScripts::Read1ByteFromScript(m_IP), i++) {
         switch (type) {
         case SCRIPT_PARAM_STATIC_INT_32BITS:
-            newScript->m_aLocalVars[i].iParam = CTheScripts::Read4BytesFromScript(m_IP);
+            newScript->m_LocalVars[i].iParam = CTheScripts::Read4BytesFromScript(m_IP);
             break;
         case SCRIPT_PARAM_GLOBAL_NUMBER_VARIABLE:
         {
             uint16 index = CTheScripts::Read2BytesFromScript(m_IP);
-            newScript->m_aLocalVars[i].iParam = *reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[index]);
+            newScript->m_LocalVars[i].iParam = *reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[index]);
             break;
         }
         case SCRIPT_PARAM_LOCAL_NUMBER_VARIABLE:
         {
             uint16 index = CTheScripts::Read2BytesFromScript(m_IP);
-            newScript->m_aLocalVars[i] = *GetPointerToLocalVariable(index);
+            newScript->m_LocalVars[i] = *GetPointerToLocalVariable(index);
             break;
         }
         case SCRIPT_PARAM_STATIC_INT_8BITS:
-            newScript->m_aLocalVars[i].iParam = CTheScripts::Read1ByteFromScript(m_IP);
+            newScript->m_LocalVars[i].iParam = CTheScripts::Read1ByteFromScript(m_IP);
             break;
         case SCRIPT_PARAM_STATIC_INT_16BITS:
-            newScript->m_aLocalVars[i].iParam = CTheScripts::Read2BytesFromScript(m_IP);
+            newScript->m_LocalVars[i].iParam = CTheScripts::Read2BytesFromScript(m_IP);
             break;
         case SCRIPT_PARAM_STATIC_FLOAT:
-            newScript->m_aLocalVars[i].fParam = CTheScripts::ReadFloatFromScript(m_IP);
+            newScript->m_LocalVars[i].fParam = CTheScripts::ReadFloatFromScript(m_IP);
             break;
         case SCRIPT_PARAM_GLOBAL_NUMBER_ARRAY:
             ReadArrayInformation(true, &arrVarOffset, &arrElemIdx);
-            newScript->m_aLocalVars[i].iParam = *reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[arrVarOffset + 4 * arrElemIdx]);
+            newScript->m_LocalVars[i].iParam = *reinterpret_cast<int32*>(&CTheScripts::ScriptSpace[arrVarOffset + 4 * arrElemIdx]);
             break;
         case SCRIPT_PARAM_LOCAL_NUMBER_ARRAY:
             ReadArrayInformation(true, &arrVarOffset, &arrElemIdx);
-            newScript->m_aLocalVars[i] = *GetPointerToLocalArrayElement(arrVarOffset, arrElemIdx, 1);
+            newScript->m_LocalVars[i] = *GetPointerToLocalArrayElement(arrVarOffset, arrElemIdx, 1);
             break;
         default:
             break;
@@ -876,30 +854,30 @@ void CRunningScript::ReadTextLabelFromScript(char* buffer, uint8 nBufferLength) 
 // Updates comparement flag, used in conditional commands
 // 0x4859D0
 void CRunningScript::UpdateCompareFlag(bool state) {
-    if (m_bNotFlag)
+    if (m_NotFlag)
         state = !state;
 
-    if (m_nLogicalOp == ANDOR_NONE) {
-        m_bCondResult = state;
+    if (m_AndOrState == ANDOR_NONE) {
+        m_CondResult = state;
         return;
     }
 
-    if (m_nLogicalOp >= ANDS_1 && m_nLogicalOp <= ANDS_8) {
-        m_bCondResult &= state;
-        if (m_nLogicalOp == ANDS_1)
-            m_nLogicalOp = ANDOR_NONE;
+    if (m_AndOrState >= ANDS_1 && m_AndOrState <= ANDS_8) {
+        m_CondResult &= state;
+        if (m_AndOrState == ANDS_1)
+            m_AndOrState = ANDOR_NONE;
         else
-            m_nLogicalOp--;
+            m_AndOrState--;
 
         return;
     }
 
-    if (m_nLogicalOp >= ORS_1 && m_nLogicalOp <= ORS_8) {
-        m_bCondResult |= state;
-        if (m_nLogicalOp == ORS_1)
-            m_nLogicalOp = ANDOR_NONE;
+    if (m_AndOrState >= ORS_1 && m_AndOrState <= ORS_8) {
+        m_CondResult |= state;
+        if (m_AndOrState == ORS_1)
+            m_AndOrState = ANDOR_NONE;
         else
-            m_nLogicalOp--;
+            m_AndOrState--;
 
         return;
     }
@@ -911,7 +889,7 @@ void CRunningScript::UpdatePC(int32 newIP) {
     if (newIP >= 0)
         m_IP = &CTheScripts::ScriptSpace[newIP];
     else
-        m_IP = m_pBaseIP + std::abs(newIP);
+        m_IP = m_BaseIP + std::abs(newIP);
 }
 
 // 0x469EB0, inlined
@@ -934,7 +912,7 @@ OpcodeResult CRunningScript::ProcessOneCommand() {
     //SPDLOG_LOGGER_TRACE(logger, "[{}][IP: {:#x} + {:#x}]: {} [{:#x}]", m_szName, LOG_PTR(m_pBaseIP), LOG_PTR(m_IP - m_pBaseIP), notsa::script::GetScriptCommandName((eScriptCommands)op.command), (size_t)op.command);
 #endif
     
-    m_bNotFlag = op.NotFlag;
+    m_NotFlag = op.NotFlag;
 
     if (const auto handler = CustomCommandHandlerOf((eScriptCommands)(op.Command))) {
         return std::invoke(handler, this);
@@ -945,17 +923,17 @@ OpcodeResult CRunningScript::ProcessOneCommand() {
 
 // 0x469F00
 OpcodeResult CRunningScript::Process() {
-    if (m_pSceneSkipIP && CCutsceneMgr::IsCutsceneSkipButtonBeingPressed()) {
+    if (m_SceneSkipIP && CCutsceneMgr::IsCutsceneSkipButtonBeingPressed()) {
         CHud::m_BigMessage[1][0] = 0;
-        UpdatePC(reinterpret_cast<int32>(m_pSceneSkipIP));
-        m_pSceneSkipIP = nullptr;
-        m_nWakeTime = 0;
+        UpdatePC(reinterpret_cast<int32>(m_SceneSkipIP));
+        m_SceneSkipIP = nullptr;
+        m_WakeTime = 0;
     }
 
-    if (m_bUseMissionCleanup)
+    if (m_UsesMissionCleanup)
         DoDeathArrestCheck();
 
-    if (m_bIsMission && CTheScripts::FailCurrentMission == 1) {
+    if (m_ThisMustBeTheOnlyMissionRunning && CTheScripts::FailCurrentMission == 1) {
         while (m_StackDepth > 1) // // todo: refactor | inline(?): while (stack.size > 1) { stack.pop() }
             --m_StackDepth;
 
@@ -965,7 +943,7 @@ OpcodeResult CRunningScript::Process() {
         }
     }
     CTheScripts::ReinitialiseSwitchStatementData();
-    if (CTimer::GetTimeInMS() >= (uint32)m_nWakeTime) {
+    if (CTimer::GetTimeInMS() >= (uint32)m_WakeTime) {
         while (ProcessOneCommand() == OR_CONTINUE); // Process commands
     }
 

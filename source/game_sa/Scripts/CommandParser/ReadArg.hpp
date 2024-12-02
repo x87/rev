@@ -117,14 +117,14 @@ inline T Read(CRunningScript* S) {
             return S->GetLocal<scm::ShortString>(S->GetAtIPAs<int16>());
 
         case SCRIPT_PARAM_GLOBAL_SHORT_STRING_ARRAY:
-            return S->ReadAtIPFromArray<scm::ShortString>(true);
+            return S->GetAtIPFromArray<scm::ShortString>(true);
         case SCRIPT_PARAM_GLOBAL_LONG_STRING_ARRAY:
-            return S->ReadAtIPFromArray<scm::LongString>(true);
+            return S->GetAtIPFromArray<scm::LongString>(true);
 
         case SCRIPT_PARAM_LOCAL_SHORT_STRING_ARRAY:
-            return S->ReadAtIPFromArray<scm::ShortString>(false);
+            return S->GetAtIPFromArray<scm::ShortString>(false);
         case SCRIPT_PARAM_LOCAL_LONG_STRING_ARRAY:
-            return S->ReadAtIPFromArray<scm::LongString>(false);
+            return S->GetAtIPFromArray<scm::LongString>(false);
 
         case SCRIPT_PARAM_LOCAL_LONG_STRING_VARIABLE:
         case SCRIPT_PARAM_STATIC_SHORT_STRING:
@@ -158,12 +158,12 @@ inline T Read(CRunningScript* S) {
                 return &S->GetLocal<Y>(S->GetAtIPAs<uint16>());
                 //return reinterpret_cast<Y*>(S->GetPointerToLocalVariable(S->GetAtIPAs<uint16>()));
             case SCRIPT_PARAM_GLOBAL_NUMBER_ARRAY: {
-                return &S->ReadAtIPFromArray<Y>(true);
+                return &S->GetAtIPFromArray<Y>(true);
                 //const auto [offset, idx] = detail::ReadArrayInfo(S);
                 //return reinterpret_cast<Y*>(&CTheScripts::ScriptSpace[offset + sizeof(tScriptParam) * idx]);
             }
             case SCRIPT_PARAM_LOCAL_NUMBER_ARRAY: {
-                return &S->ReadAtIPFromArray<Y>(false);
+                return &S->GetAtIPFromArray<Y>(false);
                 //const auto [offset, idx] = detail::ReadArrayInfo(S);
                 //return reinterpret_cast<Y*>(S->GetPointerToLocalArrayElement(offset, idx, 1));
             }
@@ -187,12 +187,12 @@ inline T Read(CRunningScript* S) {
                 return detail::safe_arithmetic_cast<T>(S->GetAtIPAs<float>());
             }
             case SCRIPT_PARAM_GLOBAL_NUMBER_ARRAY: {
-                return S->ReadAtIPFromArray<T>(true);
+                return S->GetAtIPFromArray<T>(true);
                 //const auto [offset, idx] = detail::ReadArrayInfo(S);
                 //return *reinterpret_cast<T*>(&CTheScripts::ScriptSpace[offset + sizeof(tScriptParam) * idx]);
             }
             case SCRIPT_PARAM_LOCAL_NUMBER_ARRAY: {
-                return S->ReadAtIPFromArray<Y>(false);
+                return S->GetAtIPFromArray<Y>(false);
                 //const auto [offset, idx] = detail::ReadArrayInfo(S);
                 //return *reinterpret_cast<T*>(S->GetPointerToLocalArrayElement(offset, idx, 1));
             }

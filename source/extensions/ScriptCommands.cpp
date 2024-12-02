@@ -55,29 +55,29 @@ void ScriptCode::SaveResultVariables(CRunningScript* script) {
     for (auto& varToSet : m_VarsToSet) {
         if (varToSet.m_VarType == SCRIPT_RESULT_VAR_NUMBER)
         {
-            *reinterpret_cast<uint32*>(varToSet.m_Var) = script->m_aLocalVars[varToSet.m_VarIndex].uParam;
+            *reinterpret_cast<uint32*>(varToSet.m_Var) = script->m_LocalVars[varToSet.m_VarIndex].uParam;
         }
         else if (varToSet.m_VarType == SCRIPT_RESULT_VAR_STRING)
         {
             char* str = reinterpret_cast<char*>(varToSet.m_Var);
-            strncpy_s(str, 15, reinterpret_cast<char*>(&script->m_aLocalVars[varToSet.m_VarIndex].iParam), 15);
+            strncpy_s(str, 15, reinterpret_cast<char*>(&script->m_LocalVars[varToSet.m_VarIndex].iParam), 15);
             str[15] = '\0';
         }
         else if (varToSet.m_VarType == SCRIPT_RESULT_VAR_PED)
         {
-            const auto id = script->m_aLocalVars[varToSet.m_VarIndex].iParam;
+            const auto id = script->m_LocalVars[varToSet.m_VarIndex].iParam;
             CPed* ped = id != -1 ? CPools::GetPed(id) : nullptr;
             *reinterpret_cast<CPed**>(varToSet.m_Var) = ped;
         }
         else if (varToSet.m_VarType == SCRIPT_RESULT_VAR_VEHICLE)
         {
-            const auto id = script->m_aLocalVars[varToSet.m_VarIndex].iParam;
+            const auto id = script->m_LocalVars[varToSet.m_VarIndex].iParam;
             CVehicle* vehicle = id != -1 ? CPools::GetVehicle(id) : nullptr;
             *reinterpret_cast<CVehicle**>(varToSet.m_Var) = vehicle;
         }
         else if (varToSet.m_VarType == SCRIPT_RESULT_VAR_OBJECT)
         {
-            const auto id = script->m_aLocalVars[varToSet.m_VarIndex].iParam;
+            const auto id = script->m_LocalVars[varToSet.m_VarIndex].iParam;
             CObject* obj = id != -1 ? CPools::GetObject(id) : nullptr;
             *reinterpret_cast<CObject**>(varToSet.m_Var) = obj;
         }

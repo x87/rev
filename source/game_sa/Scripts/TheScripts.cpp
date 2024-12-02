@@ -821,7 +821,7 @@ int32 CTheScripts::GetActualScriptThingIndex(int32 ref, eScriptThingType type) {
         break;
     case SCRIPT_THING_DECISION_MAKER:
         CDecisionMakerTypes::GetInstance();
-        if (CDecisionMakerTypes::m_bIsActive[idx] && CDecisionMakerTypes::ScriptReferenceIndex[idx] == id) {
+        if (CDecisionMakerTypes::m_IsActive[idx] && CDecisionMakerTypes::ScriptReferenceIndex[idx] == id) {
             return idx;
         }
         break;
@@ -1330,7 +1330,7 @@ void CTheScripts::Save() {
     auto numNonExternalScripts = 0u;
     auto* lastScript           = pActiveScripts;
     for (auto* s = pActiveScripts; s; s = s->m_pNext) {
-        if (!s->m_bIsExternal && s->m_nExternalType == -1) {
+        if (!s->m_IsExternal && s->m_ExternalType == -1) {
             numNonExternalScripts++;
             lastScript = s;
         }
@@ -1338,7 +1338,7 @@ void CTheScripts::Save() {
     CGenericGameStorage::SaveDataToWorkBuffer(numNonExternalScripts);
 
     for (auto* s = lastScript; s; s = s->m_pPrev) {
-        if (s->m_bIsExternal || s->m_nExternalType != -1) {
+        if (s->m_IsExternal || s->m_ExternalType != -1) {
             continue;
         }
 
@@ -1419,7 +1419,7 @@ void CTheScripts::Process() {
     for (auto it = pActiveScripts; it;) {
         const auto next = it->m_pNext;
 
-        for (auto& t : it->m_anTimers) {
+        for (auto& t : it->m_Timers) {
             t += timeStepMS;
         }
         it->Process();

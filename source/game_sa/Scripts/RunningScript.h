@@ -82,8 +82,8 @@ static inline std::array<tScriptParam, 32>& ScriptParams = *(std::array<tScriptP
 
 enum {
     MAX_STACK_DEPTH = 8,
-    NUM_LOCAL_VARS  = 32,
-    NUM_TIMERS      = 2
+    MAX_LOCAL_VARS  = 32,
+    MAX_NUM_TIMERS      = 2
 };
 
 constexpr auto SHORT_STRING_SIZE = 8;
@@ -181,27 +181,27 @@ public:
     };
 
 public:
-    CRunningScript *m_pNext, *m_pPrev;              //< Linked list shit
-    char            m_szName[8];                    //< Name of the script
-    uint8*          m_pBaseIP;                      //< Base instruction pointer
-    uint8*          m_IP;                           //< current instruction pointer
-    uint8*          m_IPStack[MAX_STACK_DEPTH];     //< Stack of instruction pointers (Usually saved on function call, then popped on return)
-    uint16          m_StackDepth;                   //< Depth (size) of the stack 
-    tScriptParam    m_aLocalVars[NUM_LOCAL_VARS];   //< This script's local variables (Also see `GetPointerToLocalVariable`)
-    int32           m_anTimers[NUM_TIMERS];         //< Active timers (Unsure) 
-    bool            m_bIsActive;                    //< Is the script active (Unsure)
-    bool            m_bCondResult;                  //< (See `COMMAND_GOTO_IF_FALSE`) (Unsure)
-    bool            m_bUseMissionCleanup;           //< If mission cleanup is needed after this script has finished
-    bool            m_bIsExternal;
-    bool            m_bTextBlockOverride;
-    int8            m_nExternalType;
-    int32           m_nWakeTime;                    //< Used for sleep-like comamands (like `COMMAND_WAIT`) - The script halts execution until the time is reached
-    uint16          m_nLogicalOp;                   //< Next logical OP type (See `COMMAND_ANDOR`)
-    bool            m_bNotFlag;                     //< Boolean value returned by the called command should be negated
-    bool            m_bDeathArrestEnabled;
-    bool            m_bDeathArrestExecuted;
-    uint8*          m_pSceneSkipIP;                 //< Scene skip instruction pointer (Unsure)
-    bool            m_bIsMission;                   //< Is (this script) a mission script
+    CRunningScript*                          m_pNext, *m_pPrev;                 //< Linked list shit
+    scm::ShortString                         m_szName;                          //< Name of the script
+    uint8*                                   m_BaseIP;                          //< Base instruction pointer
+    uint8*                                   m_IP;                              //< current instruction pointer
+    std::array<uint8*, MAX_STACK_DEPTH>      m_IPStack;                         //< Stack of instruction pointers (Usually saved on function call, then popped on return)
+    uint16                                   m_StackDepth;                      //< Depth (size) of the stack
+    std::array<tScriptParam, MAX_LOCAL_VARS> m_LocalVars;                       //< This script's local variables (Also see `GetPointerToLocalVariable`)
+    std::array<int32, MAX_NUM_TIMERS>        m_Timers;                          //< Active timers (Unsure)
+    bool                                     m_IsActive;                        //< Is the script active (Unsure)
+    bool                                     m_CondResult;                      //< (See `COMMAND_GOTO_IF_FALSE`) (Unsure)
+    bool                                     m_UsesMissionCleanup;              //< If mission cleanup is needed after this script has finished
+    bool                                     m_IsExternal;
+    bool                                     m_IsTextBlockOverride;
+    int8                                     m_ExternalType;
+    int32                                    m_WakeTime;                        //< Used for sleep-like commands (like `COMMAND_WAIT`) - The script halts execution until the time is reached
+    uint16                                   m_AndOrState;                      //< Next logical OP type (See `COMMAND_ANDOR`)
+    bool                                     m_NotFlag;                         //< Boolean value returned by the called command should be negated
+    bool                                     m_IsDeathArrestCheckEnabled;
+    bool                                     m_DoneDeathArrest;
+    uint8*                                   m_SceneSkipIP;                     //< IP to use to skip the cutscene (?)
+    bool                                     m_ThisMustBeTheOnlyMissionRunning; //< Is (this script) a mission script
 
 public:
     using CommandHandlerFn_t    = OpcodeResult(__thiscall CRunningScript::*)(int32);
@@ -241,7 +241,7 @@ public:
     void GetCorrectPedModelIndexForEmergencyServiceType(ePedType pedType, uint32* typeSpecificModelId);
     int16 GetPadState(uint16 playerIndex, eButtonId buttonId);
 
-    tScriptParam* GetPointerToLocalVariable(int32 varId);
+    tScriptParam* GetPointerToLocalVariable(int32 loc);
     tScriptParam* GetPointerToLocalArrayElement(int32 arrVarOffset, uint16 arrElemIdx, uint8 arrayEntriesSizeAsParams);
     tScriptParam* GetPointerToScriptVariable(eScriptVariableType variableType);
 
@@ -271,10 +271,10 @@ public:
 
     void SetName(const char* name)      { strcpy_s(m_szName, name); }
     void SetName(std::string_view name) { assert(name.size() < sizeof(m_szName)); strncpy_s(m_szName, name.data(), name.size()); }
-    void SetBaseIp(uint8* ip)           { m_pBaseIP = ip; }
+    void SetBaseIp(uint8* ip)           { m_BaseIP = ip; }
     void SetCurrentIp(uint8* ip)        { m_IP = ip; }
-    void SetActive(bool active)         { m_bIsActive = active; }
-    void SetExternal(bool external)     { m_bIsExternal = external; }
+    void SetActive(bool active)         { m_IsActive = active; }
+    void SetExternal(bool external)     { m_IsExternal = external; }
 
     //! Highlight an important area 2D
     void HighlightImportantArea(CVector2D from, CVector2D to, float z = -100.f);
@@ -301,13 +301,13 @@ public:
     //! Get local variable
     template<typename T>
     T& GetLocal(size_t loc) {
-        return reinterpret_cast<T&>(m_bIsMission ? CTheScripts::LocalVariablesForCurrentMission[loc] : m_aLocalVars[loc]);
+        return reinterpret_cast<T&>(m_ThisMustBeTheOnlyMissionRunning ? CTheScripts::LocalVariablesForCurrentMission[loc] : m_LocalVars[loc]);
     }
 
     //! Get value from local array
     template<typename T>
-    T& GetArrayLocal(size_t base, size_t idx) {
-        return GetLocal<T>(base + idx * std::min<size_t>(1, sizeof(T) / sizeof(tScriptParam)));
+    T& GetArrayLocal(size_t base, size_t idx, size_t elemSizeInDWords = std::min<size_t>(1, sizeof(T) / sizeof(int32))) {
+        return GetLocal<T>(base + idx * elemSizeInDWords);
     }
 
     //! Get global variable
@@ -318,13 +318,13 @@ public:
 
     //! Get value from global array
     template<typename T>
-    T& GetArrayGlobal(size_t base, size_t idx) {
-        return GetGlobal<T>(base + idx * sizeof(T));
+    T& GetArrayGlobal(size_t base, size_t idx, size_t elemSizeInDWords = std::min<size_t>(1, sizeof(T) / sizeof(int32))) {
+        return GetGlobal<T>(base + idx * elemSizeInDWords * sizeof(int32));
     }
 
     //! Perform array access (Increments IP)
     template<typename T>
-    T& ReadAtIPFromArray(bool isGlobalArray) {
+    T& GetAtIPFromArray(bool isGlobalArray) {
         const auto op = GetAtIPAs<scm::ArrayAccess>();
         VERIFY(op.ElemType == scm::ArrayAccess::GetElementTypeOf<T>());
         const auto idx = op.IdxVarIsGlobal
