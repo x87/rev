@@ -6,7 +6,6 @@ constexpr size_t SIN_LUT_SIZE = 256;
 auto& ms_SinTable = StaticRef<std::array<float, SIN_LUT_SIZE>>(0xBB3E00); // This is the correct address, not `0xBB3DFC`
 
 constexpr auto RadToSinTableIndex(float rad) {
-    assert(rad >= 0.f);
     return (uint32)(rad * ((float)(SIN_LUT_SIZE) / TWO_PI)) % SIN_LUT_SIZE;
 }
 
