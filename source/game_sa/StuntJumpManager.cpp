@@ -105,7 +105,13 @@ void CStuntJumpManager::Update() {
             playerVehicle->GetVehicleAppearance() != VEHICLE_APPEARANCE_BOAT &&
             playerVehicle->GetVehicleAppearance() != VEHICLE_APPEARANCE_PLANE &&
             playerVehicle->GetVehicleAppearance() != VEHICLE_APPEARANCE_HELI &&
-            playerVehicle->m_nNumEntitiesCollided != 0 && // FIXME: https://discord.com/channels/874507673943539752/880913138004938774/1294699278979039264
+            // Game sometimes miss successful jumps: it's somewhat rare but happens quite a lot
+            // while speedrunning. This check here is suspicious, small bumps may cause fail the jump.
+            //
+            // lordmau5 added a grace period allowing the vehicle to be airborne if any wheel
+            // touched ground on his MTA script to fix.
+            playerVehicle->m_nNumEntitiesCollided == 0 && // Check that vehicle is not colliding when starting the jump
+            
             playerVehicle->m_vecMoveSpeed.Magnitude() * 50.0f >= 20.0f
         ) {
             for (auto jumpIndex = 0; jumpIndex < STUNT_JUMP_COUNT; jumpIndex++) {
