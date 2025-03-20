@@ -22,8 +22,6 @@
 
 #include "SCMChunks.hpp"
 
-inline bool gAllowScriptedFixedCameraCollision = false;
-
 class CCheckpoint;
 enum class eCheckpointType : uint32;
 
@@ -343,8 +341,10 @@ enum class ScriptSavedObjectType : uint32 {
 };
 
 static constexpr uint32 SCRIPT_VAR_TIMERA = 32, SCRIPT_VAR_TIMERB = 33;
-
 static constexpr uint32 MISSION_SCRIPT_SIZE = 69000;
+
+static inline bool gAllowScriptedFixedCameraCollision = false;
+
 class CTheScripts {
 public:
     static constexpr uint32 MAIN_SCRIPT_SIZE         = 200'000;
