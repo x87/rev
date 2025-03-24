@@ -35,6 +35,7 @@
 #include "./BugsDebugModule.hpp"
 #include "./TwoDEffectsDebugModule.hpp"
 #include "./VehicleInfoDebugModule.h"
+#include "./CoverPointsDebugModule.hpp"
 
 DebugModules::DebugModules(ImGuiContext* ctx) :
     m_ImCtx(ctx)
@@ -43,7 +44,7 @@ DebugModules::DebugModules(ImGuiContext* ctx) :
 }
 
 DebugModules::~DebugModules() {
-    DoSerializeModules(); // NOTE/BUG: Currently practically never runs because GTA crashes before it :D
+    DoSerializeModules();
 }
 
 void DebugModules::PreRenderUpdate() {
@@ -113,11 +114,12 @@ void DebugModules::CreateModules() {
     Add<ParticleDebugModule>();
     Add<TextDebugModule>();
     Add<notsa::debugmodules::CheckpointsDebugModule>();
-    Add<notsa::debugmodules::TwoDEffectsDebugModule>();
     Add<ProcObjectDebugModule>();
     Add<VehicleInfoDebugModule>();
 
     // Stuff that is present in multiple menus
+    Add<notsa::debugmodules::TwoDEffectsDebugModule>(); // Visualization + Extra
+    Add<notsa::debugmodules::CoverPointsDebugModule>(); // Visualization + Extra
     Add<TimeCycleDebugModule>(); // Visualization + Extra
     Add<CullZonesDebugModule>(); // Visualization + Extra
     Add<COcclusionDebugModule>(); // Visualization + Extra
