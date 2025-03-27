@@ -69,6 +69,7 @@ void CCarCtrl::InjectHooks()
     RH_ScopedInstall(ScriptGenerateOneEmergencyServicesCar, 0x42FBC0);
     RH_ScopedInstall(SlowCarDownForObject, 0x426220);
     RH_ScopedInstall(SlowCarOnRailsDownForTrafficAndLights, 0x434790);
+    RH_ScopedInstall(FindMaxSteerAngle, 0x427FE0);
     RH_ScopedInstall(GenerateRandomCars, 0x4341C0);
 }
 
@@ -210,10 +211,10 @@ CVehicle* CCarCtrl::CreateCarForScript(int32 modelid, CVector posn, bool doMissi
         boat->m_nStatus = eEntityStatus::STATUS_ABANDONED;
         JoinCarWithRoadSystem(boat);
 
-        boat->m_autoPilot.m_nCarMission = eCarMission::MISSION_NONE;
-        boat->m_autoPilot.m_nTempAction = 0;
+        boat->m_autoPilot.SetCarMission(eCarMission::MISSION_NONE);
+        boat->m_autoPilot.m_nTempAction = TEMPACT_NONE;
         boat->m_autoPilot.m_speed = 20.0F;
-        boat->m_autoPilot.m_nCruiseSpeed = 20;
+        boat->m_autoPilot.SetCruiseSpeed(20);
 
         if (doMissionCleanup)
             boat->m_bIsStaticWaitingForCollision = true;
@@ -252,11 +253,11 @@ CVehicle* CCarCtrl::CreateCarForScript(int32 modelid, CVector posn, bool doMissi
     vehicle->vehicleFlags.bEngineOn = false;
     vehicle->vehicleFlags.bHasBeenOwnedByPlayer = true;
 
-    vehicle->m_autoPilot.m_nCarMission = eCarMission::MISSION_NONE;
-    vehicle->m_autoPilot.m_nTempAction = 0;
+    vehicle->m_autoPilot.SetCarMission(eCarMission::MISSION_NONE);
+    vehicle->m_autoPilot.m_nTempAction = TEMPACT_NONE;
     vehicle->m_autoPilot.m_nCarDrivingStyle = DRIVING_STYLE_STOP_FOR_CARS;
     vehicle->m_autoPilot.m_speed = 13.0F;
-    vehicle->m_autoPilot.m_nCruiseSpeed = 13;
+    vehicle->m_autoPilot.SetCruiseSpeed(13);
     vehicle->m_autoPilot.m_nCurrentLane = 0;
     vehicle->m_autoPilot.m_nNextLane = 0;
 
@@ -562,7 +563,7 @@ void CCarCtrl::JoinCarWithRoadAccordingToMission(CVehicle* vehicle) {
     case MISSION_ESCORT_RIGHT_FARAWAY:
     case MISSION_ESCORT_REAR_FARAWAY:
     case MISSION_ESCORT_FRONT_FARAWAY: {
-        JoinCarWithRoadSystemGotoCoors(vehicle, vehicle->m_autoPilot.m_pTargetCar->GetPosition(), true, vehicle->IsSubBoat());
+        JoinCarWithRoadSystemGotoCoors(vehicle, vehicle->m_autoPilot.m_TargetEntity->GetPosition(), true, vehicle->IsSubBoat());
         break;
     }
     }
@@ -755,7 +756,7 @@ bool CCarCtrl::ScriptGenerateOneEmergencyServicesCar(uint32 modelId, CVector pos
     if (CStreaming::IsModelLoaded(modelId)) {
         if (auto pAuto = GenerateOneEmergencyServicesCar(modelId, posn)) {
             pAuto->m_autoPilot.m_vecDestinationCoors = posn;
-            pAuto->m_autoPilot.m_nCarMission = JoinCarWithRoadSystemGotoCoors(pAuto, posn, false, false) ? MISSION_GOTOCOORDINATES_STRAIGHTLINE : MISSION_GOTOCOORDINATES;
+            pAuto->m_autoPilot.SetCarMission(JoinCarWithRoadSystemGotoCoors(pAuto, posn, false, false) ? MISSION_GOTOCOORDINATES_STRAIGHTLINE : MISSION_GOTOCOORDINATES);
             return true;
         }
     }
@@ -1027,4 +1028,9 @@ void CCarCtrl::WeaveThroughObjectsSectorList(CPtrList& ptrList, CVehicle* vehicl
 // 0x42D7E0
 void CCarCtrl::WeaveThroughPedsSectorList(CPtrList& ptrList, CVehicle* vehicle, CPhysical* physical, float arg4, float arg5, float arg6, float arg7, float* arg8, float* arg9) {
     plugin::Call<0x42D7E0, CPtrList&, CVehicle*, CPhysical*, float, float, float, float, float*, float*>(ptrList, vehicle, physical, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
+// 0x427FE0
+float CCarCtrl::FindMaxSteerAngle(CVehicle* veh) {
+    return std::clamp(0.9f - veh->GetMoveSpeed().Magnitude(), 0.2f, 0.7f);
 }
