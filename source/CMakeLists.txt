@@ -3,15 +3,19 @@
 #--------------------------------------------------------------------
 option(${RE_PROJECT}_WITH_OPENAL "Use OpenAL" OFF)
 
-
 #--------------------------------------------------------------------
 # Build options
 #--------------------------------------------------------------------
 option(${RE_PROJECT}_UNITY_BUILD "Use Unity/Jumbo build" OFF)
 option(${RE_PROJECT}_WITH_SANITIZERS "Use Sanitizers (better crash log)" OFF)
 option(${RE_PROJECT}_WITH_LTO "Use Link Time Optimization" OFF)
-option(${RE_PROJECT}_WITH_SCRIPT_COMMAND_HOOKS "Create script command hooks in the UI (Command hooks are installed regardless)" OFF)
 option(${RE_PROJECT}_WITH_CLEO_COMMANDS "Enable CLEO script commands" OFF)
+option(${RE_PROJECT}_WITH_SCRIPT_COMMAND_HOOKS "Create script command hooks in the UI (Command hooks are installed regardless)" OFF)
+
+if(${RE_PROJECT}_WITH_SCRIPT_COMMAND_HOOKS)
+    message(STATUS "Script command hooks enabled")
+    add_compile_definitions(NOTSA_WITH_SCRIPT_COMMAND_HOOKS)
+endif()
 
 file(
     GLOB_RECURSE SOURCE_FILES_LIST
