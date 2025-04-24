@@ -35,7 +35,7 @@ void CStuckCarCheck::AddCarToCheck(int32 carHandle, float stuckRadius, uint32 ti
         // NOTSA optimization
         if (car.m_CarHandle == -1) {
             car.m_CarHandle            = carHandle;
-            car.m_CarPos               = vehicle->GetPosition();
+            car.m_LastPos              = vehicle->GetPosition();
             car.m_LastChecked          = CTimer::m_snTimeInMilliseconds;
             car.m_StuckRadius          = stuckRadius;
             car.m_CheckTime            = time;
@@ -115,17 +115,17 @@ void CStuckCarCheck::Process() {
         }
 
         if (!vehicle->m_pDriver) {
-            car.m_CarPos      = vehicle->GetPosition();
+            car.m_LastPos     = vehicle->GetPosition();
             car.m_LastChecked = CTimer::m_snTimeInMilliseconds;
             continue;
         }
 
         if (CTimer::m_snTimeInMilliseconds > (uint32)car.m_LastChecked + car.m_CheckTime) {
             CVector curPos    = vehicle->GetPosition();
-            CVector distMoved = curPos - car.m_CarPos;
+            CVector distMoved = curPos - car.m_LastPos;
 
             car.m_CarStuck    = distMoved.Magnitude() < car.m_StuckRadius;
-            car.m_CarPos      = curPos;
+            car.m_LastPos     = curPos;
             car.m_LastChecked = CTimer::m_snTimeInMilliseconds;
         }
 
@@ -164,7 +164,7 @@ void CStuckCarCheck::Process() {
 
         for (int32 i = 0; i < car.m_NumberOfNodesToCheck; i++) { // m_nNumberOfNodesToCheck 0 is ignored
             CVector newCoords{};
-            auto    node = ThePaths.FindNthNodeClosestToCoors(car.m_CarPos, PATH_TYPE_VEH, 999999.88f, false, true, i, false, false, nullptr);
+            auto    node = ThePaths.FindNthNodeClosestToCoors(car.m_LastPos, PATH_TYPE_VEH, 999999.88f, false, true, i, false, false, nullptr);
             if (ThePaths.FindNodeCoorsForScript(newCoords, node)) {
                 auto newHeading = ThePaths.FindNodeOrientationForCarPlacement(node);
                 if (CStuckCarCheck::AttemptToWarpVehicle(vehicle, &newCoords, newHeading)) {
@@ -191,7 +191,7 @@ void CStuckCarCheck::ResetArrayElement(uint16 carHandle) {
 
 // NOTSA
 void CStuckCarCheck::ResetArrayElement(tStuckCar& car) {
-    car.m_CarPos               = CVector(-5000.0f, -5000.0f, -5000.0f);
+    car.m_LastPos              = CVector(-5000.0f, -5000.0f, -5000.0f);
     car.m_CarHandle            = -1;
     car.m_LastChecked          = -1;
     car.m_StuckRadius          = 0.0f;

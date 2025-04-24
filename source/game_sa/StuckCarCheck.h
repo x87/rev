@@ -13,7 +13,7 @@
 
 struct tStuckCar {
     int32   m_CarHandle;
-    CVector m_CarPos;
+    CVector m_LastPos;
     int32   m_LastChecked;
     float   m_StuckRadius;
     int32   m_CheckTime;
