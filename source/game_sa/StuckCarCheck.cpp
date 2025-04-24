@@ -33,18 +33,18 @@ void CStuckCarCheck::AddCarToCheck(int32 carHandle, float stuckRadius, uint32 ti
 
     for (auto& car : m_aStuckCars) {
         // NOTSA optimization
-        if (car.m_CarHandle == -1) {
-            car.m_CarHandle            = carHandle;
-            car.m_LastPos              = vehicle->GetPosition();
-            car.m_LastChecked          = CTimer::m_snTimeInMilliseconds;
-            car.m_StuckRadius          = stuckRadius;
-            car.m_CheckTime            = time;
-            car.m_WarpCar              = warpCar;
-            car.m_WarpIfStuck          = stuck;
-            car.m_WarpIfFlipped        = flipped;
-            car.m_CarStuck             = false;
-            car.m_WarpIfInWater        = inWater;
-            car.m_NumberOfNodesToCheck = numberOfNodesToCheck;
+        if (car.CarHandle == -1) {
+            car.CarHandle            = carHandle;
+            car.LastPos              = vehicle->GetPosition();
+            car.LastChecked          = CTimer::m_snTimeInMilliseconds;
+            car.StuckRadius          = stuckRadius;
+            car.CheckTime            = time;
+            car.WarpCar              = warpCar;
+            car.WarpIfStuck          = stuck;
+            car.WarpIfFlipped        = flipped;
+            car.CarStuck             = false;
+            car.WarpIfInWater        = inWater;
+            car.NumberOfNodesToCheck = numberOfNodesToCheck;
             return;
         }
     }
@@ -56,9 +56,9 @@ bool CStuckCarCheck::AttemptToWarpVehicle(CVehicle* vehicle, CVector* origin, fl
         return false;
     }
 
-    int16   outCount = {};
-    CVector offset{ 4.0f, 4.0f, 4.0f };
-    CWorld::FindMissionEntitiesIntersectingCube(*origin - offset, *origin + offset, &outCount, 2, nullptr, true, true, true);
+    int16             outCount = {};
+    constexpr CVector OFFSET{ 4.0f, 4.0f, 4.0f };
+    CWorld::FindMissionEntitiesIntersectingCube(*origin - OFFSET, *origin + OFFSET, &outCount, 2, nullptr, true, true, true);
 
     if (outCount) {
         return false;
@@ -72,8 +72,8 @@ bool CStuckCarCheck::AttemptToWarpVehicle(CVehicle* vehicle, CVector* origin, fl
 // 0x463C40
 void CStuckCarCheck::ClearStuckFlagForCar(int32 carHandle) {
     for (auto& car : m_aStuckCars) {
-        if (car.m_CarHandle == carHandle) {
-            car.m_CarStuck = false;
+        if (car.CarHandle == carHandle) {
+            car.CarStuck = false;
         }
     }
 }
@@ -81,7 +81,7 @@ void CStuckCarCheck::ClearStuckFlagForCar(int32 carHandle) {
 // 0x463C00
 bool CStuckCarCheck::HasCarBeenStuckForAWhile(int32 carHandle) {
     for (auto& car : m_aStuckCars) {
-        if (car.m_CarHandle == carHandle && car.m_CarStuck) {
+        if (car.CarHandle == carHandle && car.CarStuck) {
             return true;
         }
     }
@@ -91,7 +91,7 @@ bool CStuckCarCheck::HasCarBeenStuckForAWhile(int32 carHandle) {
 // 0x463C70
 bool CStuckCarCheck::IsCarInStuckCarArray(int32 carHandle) {
     for (auto& car : m_aStuckCars) {
-        if (car.m_CarHandle == carHandle) {
+        if (car.CarHandle == carHandle) {
             return true;
         }
     }
@@ -103,11 +103,11 @@ void CStuckCarCheck::Process() {
     ZoneScoped;
 
     for (auto& car : m_aStuckCars) {
-        if (car.m_CarHandle < 0) {
+        if (car.CarHandle < 0) {
             continue;
         }
 
-        auto vehicle = CPools::GetVehicle(car.m_CarHandle);
+        auto vehicle = CPools::GetVehicle(car.CarHandle);
 
         if (!vehicle) {
             ResetArrayElement(car);
@@ -115,32 +115,32 @@ void CStuckCarCheck::Process() {
         }
 
         if (!vehicle->m_pDriver) {
-            car.m_LastPos     = vehicle->GetPosition();
-            car.m_LastChecked = CTimer::m_snTimeInMilliseconds;
+            car.LastPos     = vehicle->GetPosition();
+            car.LastChecked = CTimer::m_snTimeInMilliseconds;
             continue;
         }
 
-        if (CTimer::m_snTimeInMilliseconds > (uint32)car.m_LastChecked + car.m_CheckTime) {
+        if (CTimer::m_snTimeInMilliseconds > (uint32)car.LastChecked + car.CheckTime) {
             CVector curPos    = vehicle->GetPosition();
-            CVector distMoved = curPos - car.m_LastPos;
+            CVector distMoved = curPos - car.LastPos;
 
-            car.m_CarStuck    = distMoved.Magnitude() < car.m_StuckRadius;
-            car.m_LastPos     = curPos;
-            car.m_LastChecked = CTimer::m_snTimeInMilliseconds;
+            car.CarStuck    = distMoved.Magnitude() < car.StuckRadius;
+            car.LastPos     = curPos;
+            car.LastChecked = CTimer::m_snTimeInMilliseconds;
         }
 
-        if (!car.m_WarpCar) {
+        if (!car.WarpCar) {
             continue;
         }
 
         bool shouldWarp = false;
-        if (car.m_WarpIfStuck && car.m_CarStuck) {
+        if (car.WarpIfStuck && car.CarStuck) {
             shouldWarp = true;
         }
-        if (car.m_WarpIfFlipped && CTheScripts::UpsideDownCars.IsCarUpsideDown(vehicle)) {
+        if (car.WarpIfFlipped && CTheScripts::UpsideDownCars.IsCarUpsideDown(vehicle)) {
             shouldWarp = true;
         }
-        if (car.m_WarpIfInWater && vehicle->physicalFlags.bSubmergedInWater) {
+        if (car.WarpIfInWater && vehicle->physicalFlags.bSubmergedInWater) {
             shouldWarp = true;
         }
 
@@ -152,7 +152,7 @@ void CStuckCarCheck::Process() {
             continue;
         }
 
-        if (car.m_NumberOfNodesToCheck < 0) {
+        if (car.NumberOfNodesToCheck < 0) {
             bool    found{};
             float   newHeading{};
             CVector newCoords = ThePaths.FindNodeCoorsForScript(vehicle->m_autoPilot.m_currentAddress, vehicle->m_autoPilot.m_startingRouteNode, newHeading, &found);
@@ -162,9 +162,9 @@ void CStuckCarCheck::Process() {
             continue;
         }
 
-        for (int32 i = 0; i < car.m_NumberOfNodesToCheck; i++) { // m_nNumberOfNodesToCheck 0 is ignored
+        for (int32 i = 0; i < car.NumberOfNodesToCheck; i++) { // m_nNumberOfNodesToCheck 0 is ignored
             CVector newCoords{};
-            auto    node = ThePaths.FindNthNodeClosestToCoors(car.m_LastPos, PATH_TYPE_VEH, 999999.88f, false, true, i, false, false, nullptr);
+            auto    node = ThePaths.FindNthNodeClosestToCoors(car.LastPos, PATH_TYPE_VEH, 999999.88f, false, true, i, false, false, nullptr);
             if (ThePaths.FindNodeCoorsForScript(newCoords, node)) {
                 auto newHeading = ThePaths.FindNodeOrientationForCarPlacement(node);
                 if (CStuckCarCheck::AttemptToWarpVehicle(vehicle, &newCoords, newHeading)) {
@@ -178,7 +178,7 @@ void CStuckCarCheck::Process() {
 // 0x463B80
 void CStuckCarCheck::RemoveCarFromCheck(int32 carHandle) {
     for (auto& car : m_aStuckCars) {
-        if (car.m_CarHandle == carHandle) {
+        if (car.CarHandle == carHandle) {
             ResetArrayElement(car);
         }
     }
@@ -191,15 +191,15 @@ void CStuckCarCheck::ResetArrayElement(uint16 carHandle) {
 
 // NOTSA
 void CStuckCarCheck::ResetArrayElement(tStuckCar& car) {
-    car.m_LastPos              = CVector(-5000.0f, -5000.0f, -5000.0f);
-    car.m_CarHandle            = -1;
-    car.m_LastChecked          = -1;
-    car.m_StuckRadius          = 0.0f;
-    car.m_CheckTime            = 0;
-    car.m_CarStuck             = false;
-    car.m_WarpCar              = false;
-    car.m_WarpIfStuck          = false;
-    car.m_WarpIfFlipped        = false;
-    car.m_WarpIfInWater        = false;
-    car.m_NumberOfNodesToCheck = 0;
+    car.LastPos              = CVector(-5000.0f, -5000.0f, -5000.0f);
+    car.CarHandle            = -1;
+    car.LastChecked          = -1;
+    car.StuckRadius          = 0.0f;
+    car.CheckTime            = 0;
+    car.CarStuck             = false;
+    car.WarpCar              = false;
+    car.WarpIfStuck          = false;
+    car.WarpIfFlipped        = false;
+    car.WarpIfInWater        = false;
+    car.NumberOfNodesToCheck = 0;
 }

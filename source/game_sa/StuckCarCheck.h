@@ -12,17 +12,17 @@
 #define STUCK_CAR_CHECK_SIZE 16
 
 struct tStuckCar {
-    int32   m_CarHandle;
-    CVector m_LastPos;
-    int32   m_LastChecked;
-    float   m_StuckRadius;
-    int32   m_CheckTime;
-    bool    m_CarStuck;
-    bool    m_WarpCar;
-    bool    m_WarpIfStuck;
-    bool    m_WarpIfFlipped;
-    bool    m_WarpIfInWater;
-    int8    m_NumberOfNodesToCheck;
+    int32   CarHandle;
+    CVector LastPos;
+    int32   LastChecked;
+    float   StuckRadius;
+    int32   CheckTime;
+    bool    CarStuck;
+    bool    WarpCar;
+    bool    WarpIfStuck;
+    bool    WarpIfFlipped;
+    bool    WarpIfInWater;
+    int8    NumberOfNodesToCheck;
 };
 
 class CStuckCarCheck {
