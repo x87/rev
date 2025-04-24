@@ -146,7 +146,7 @@ void CStuckCarCheck::Process() {
                                 } else {
                                     bool    found      = {};
                                     float   newHeading = {};
-                                    CVector newCoords  = ThePaths.FindNodeCoorsForScript(vehicle->m_autoPilot.m_startingRouteNode, vehicle->m_autoPilot.m_endingRouteNode, newHeading, &found);
+                                    CVector newCoords  = ThePaths.FindNodeCoorsForScript(vehicle->m_autoPilot.m_currentAddress, vehicle->m_autoPilot.m_startingRouteNode, newHeading, &found);
                                     if (found) {
                                         CStuckCarCheck::AttemptToWarpVehicle(vehicle, &newCoords, newHeading);
                                     }
