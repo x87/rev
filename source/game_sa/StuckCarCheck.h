@@ -18,11 +18,11 @@ struct tStuckCar {
     float   m_fDistance;
     int32   m_nStuckTime;
     bool    m_bCarStuck;
-    char    field_1D;
+    char    m_bWarpCar;
     bool    m_bStuck;
     bool    m_bFlipped;
-    bool    m_bbWarp;
-    int8    m_nPathId;
+    bool    m_bInWater;
+    int8    m_nNumberOfNodesToCheck;
 };
 
 class CStuckCarCheck {
@@ -32,7 +32,7 @@ public:
     static void InjectHooks();
 
     void Init();
-    void AddCarToCheck(int32 carHandle, float distance, uint32 time, uint8 a5, bool bStuck, bool bFlipped, bool bWarp, int8 pathId);
+    void AddCarToCheck(int32 carHandle, float distance, uint32 time, uint8 bWarpCar, bool bStuck, bool bFlipped, bool bInWater, int8 numberOfNodesToCheck);
     bool AttemptToWarpVehicle(CVehicle* vehicle, CVector* origin, float orientation);
     void ClearStuckFlagForCar(int32 carHandle);
     bool HasCarBeenStuckForAWhile(int32 carHandle);

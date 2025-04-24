@@ -55,7 +55,7 @@ void CPathFind::InjectHooks() {
     RH_ScopedOverloadedInstall(FindNodeCoorsForScript, "LinkedNode", 0x4505E0, CVector(CPathFind::*)(CNodeAddress, bool*));
     RH_ScopedInstall(IsWaterNodeNearby, 0x450DE0);
     RH_ScopedInstall(CountNeighboursToBeSwitchedOff, 0x4504F0);
-    //RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320);
+    RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320);
     //RH_ScopedInstall(FindNodePairClosestToCoors, 0x44FEE0);
     RH_ScopedInstall(FindNodeClosestToCoorsFavourDirection, 0x44FCE0);
     //RH_ScopedInstall(FindNodeClosestToCoors, 0x44FA30);
@@ -1032,6 +1032,11 @@ size_t CPathFind::CountNeighboursToBeSwitchedOff(const CPathNode& node) {
     const auto ret = (size_t)rng::count_if(GetNodeLinkedNodes(node), &CPathNode::HasToBeSwitchedOff);
     __asm mov eax, this // It has to be `this`
     return ret;
+}
+
+// 0x450320
+float CPathFind::FindNodeOrientationForCarPlacement(CNodeAddress nodeInfo) {
+    return plugin::CallMethodAndReturn<float, 0x450320, CPathFind*, CNodeAddress>(this, nodeInfo);
 }
 
 // 0x452160
