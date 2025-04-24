@@ -55,7 +55,7 @@ void CPathFind::InjectHooks() {
     RH_ScopedOverloadedInstall(FindNodeCoorsForScript, "LinkedNode", 0x4505E0, CVector(CPathFind::*)(CNodeAddress, bool*));
     RH_ScopedInstall(IsWaterNodeNearby, 0x450DE0);
     RH_ScopedInstall(CountNeighboursToBeSwitchedOff, 0x4504F0);
-    RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320);
+    //RH_ScopedInstall(FindNodeOrientationForCarPlacement, 0x450320);
     //RH_ScopedInstall(FindNodePairClosestToCoors, 0x44FEE0);
     RH_ScopedInstall(FindNodeClosestToCoorsFavourDirection, 0x44FCE0);
     //RH_ScopedInstall(FindNodeClosestToCoors, 0x44FA30);
@@ -600,7 +600,7 @@ CPathNode* CPathFind::GetPathNode(CNodeAddress address) {
 // NOTSA
 bool CPathFind::FindNodeCoorsForScript(CVector& outPos, CNodeAddress addr) {
     bool valid{};
-    FindNodeCoorsForScript(addr, &valid);
+    outPos = FindNodeCoorsForScript(addr, &valid);
     return valid;
 }
 
