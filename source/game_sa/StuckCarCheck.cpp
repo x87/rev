@@ -133,7 +133,7 @@ void CStuckCarCheck::Process() {
                             CVector boundCentre = vehicle->GetBoundCentre();
                             if (!TheCamera.IsSphereVisible(boundCentre, radius)) {
                                 if (car.m_nNumberOfNodesToCheck >= 0) {
-                                    for (int32 i = 1; i < car.m_nNumberOfNodesToCheck; i++) { // m_nNumberOfNodesToCheck 0 is ignored
+                                    for (int32 i = 0; i < car.m_nNumberOfNodesToCheck; i++) { // m_nNumberOfNodesToCheck 0 is ignored
                                         CVector newCoords;
                                         auto    node = ThePaths.FindNthNodeClosestToCoors(car.m_vCarPos, PATH_TYPE_VEH, 999999.88f, false, true, i, false, false, nullptr);
                                         if (ThePaths.FindNodeCoorsForScript(newCoords, node)) {
