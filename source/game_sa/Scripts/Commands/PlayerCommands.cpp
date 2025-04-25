@@ -5,10 +5,14 @@
 
 #include <TaskTypes/TaskSimplePlayerOnFoot.h>
 #include <TaskTypes/TaskSimpleSwim.h>
+#include "PedClothesDesc.h"
+#include "MBlur.h"
+#include "Ropes.h"
 
 #include <RunningScript.h>
 
 using namespace notsa::script;
+
 /*!
 * Various player commands
 */
@@ -87,8 +91,9 @@ bool IsPlayerClimbing(CPlayerPed& player) {
 }
 
 void SetSwimSpeed(CPlayerPed& player, float speed) {
-    if (auto swim = player.GetIntelligence()->GetTaskSwim())
+    if (auto swim = player.GetIntelligence()->GetTaskSwim()) {
         swim->m_fAnimSpeed = speed;
+    }
 }
 
 void SetPlayerGroupToFollowAlways(CPlayerPed& player, bool enable) {
@@ -113,6 +118,255 @@ bool IsPlayerTouchingObjectOnFoot(CPlayerPed& player, CObject& object) {
 //bool IsPlayerInPositionForConversation(CPed& ped) { // Yes, it's CPed
 //
 //}
+
+void AddScore(CPlayerInfo& player, int32 score) {
+    player.m_nMoney += score;
+}
+
+//
+bool IsScoreGreater(CPlayerInfo& player, int32 score) {
+    return player.m_nMoney > score;
+}
+
+int32 StoreScore(CPlayerInfo& player) {
+    return player.m_nMoney;
+}
+
+void AlterPlayerWantedLevel(CPlayerPed& player, int32 level) {
+    player.SetWantedLevel(level);
+}
+
+void AlterPlayerWantedLevelNoDrop(CPlayerPed& player, int32 level) {
+    player.SetWantedLevelNoDrop(level);
+}
+
+bool IsWantedLevelGreater(CPlayerPed& player, int32 level) {
+    return (int32)player.GetWanted()->GetWantedLevel() > level;
+}
+
+void ClearWantedLevel(CPlayerPed& player) {
+    player.GetWanted()->SetWantedLevel(0);
+}
+
+void SetMaxWantedLevel(int32 level) {
+    CWanted::SetMaximumWantedLevel(level);
+}
+
+bool IsPlayerDead(CPlayerInfo& player) {
+    return player.m_nPlayerState == PLAYERSTATE_HAS_DIED;
+}
+
+int32 GetPlayerChar(CPlayerPed& player) {
+    return GetPedPool()->GetRef(&player);
+}
+
+bool IsPlayerPressingHorn(uint32 playerIdx) {
+    return FindPlayerPed(playerIdx)->GetPedState() == PEDSTATE_DRIVING && CPad::GetPad(playerIdx)->GetHorn();
+}
+
+void SetPlayerControl(CPlayerInfo& player, bool state) {
+    player.MakePlayerSafe(!state, 10.0);
+}
+
+void SetPoliceIgnorePlayer(CPlayerPed& player, bool state) {
+    player.GetWanted()->m_bPoliceBackOff = state;
+    if (state) {
+        CWorld::StopAllLawEnforcersInTheirTracks();
+    }
+}
+
+void SetEveryoneIgnorePlayer(CPlayerPed& player, bool state) {
+    player.GetWanted()->m_bEverybodyBackOff = state;
+    if (state) {
+        CWorld::StopAllLawEnforcersInTheirTracks();
+    }
+}
+
+void ApplyBrakesToPlayersCar(uint32 playerIdx, bool state) {
+    CPad::GetPad(playerIdx)->bApplyBrakes = state;
+}
+
+bool IsPlayerInRemoteMode(CPlayerInfo& player) {
+    return player.IsPlayerInRemoteMode();
+}
+
+int16 GetNumOfModelsKilledByPlayer(uint32 playerIdx, eModelID model) {
+    return CDarkel::QueryModelsKilledByPlayer(playerIdx, model);
+}
+
+void ResetNumOfModelsKilledByPlayer(uint32 playerIdx) {
+    CDarkel::ResetModelsKilledByPlayer(playerIdx);
+}
+
+void SetPlayerNeverGetsTired(CPlayerInfo& player, bool state) {
+    player.m_bDoesNotGetTired = state;
+}
+
+void SetPlayerFastReload(CPlayerInfo& player, bool state) {
+    player.m_bFastReload = state;
+}
+
+bool CanPlayerStartMission(CPlayerPed& player) {
+    return player.CanPlayerStartMission();
+}
+
+void MakePlayerSafeForCutscene(uint32 playerIdx) {
+    CPad::GetPad(playerIdx)->bPlayerSafeForCutscene = true;
+    FindPlayerInfo(playerIdx).MakePlayerSafe(true, 10000.0f);
+    CCutsceneMgr::ms_cutsceneProcessing = 1;
+}
+
+bool IsPlayerTargettingChar(CPlayerPed& player, CPed* target) {
+    CEntity* targetedObject = player.m_pTargetedObject;
+    if (targetedObject && targetedObject->GetType() == ENTITY_TYPE_PED && targetedObject == target) {
+        return true;
+    }
+
+    if (CCamera::m_bUseMouse3rdPerson && player.GetPadFromPlayer()->GetTarget()) {
+        return player.m_p3rdPersonMouseTarget && player.m_p3rdPersonMouseTarget == target;
+    }
+
+    return false;
+}
+
+bool IsPlayerTargettingObject(CPlayerPed& player, CObject* target) {
+    CEntity* targetedObject = player.m_pTargetedObject;
+    return targetedObject && targetedObject->GetType() == ENTITY_TYPE_OBJECT && targetedObject == target;
+}
+
+void GiveRemoteControlledModelToPlayer(CPlayerPed& player, CVector posn, float angle, eModelID model) {
+    if (posn.z <= MAP_Z_LOW_LIMIT) {
+        posn.z = CWorld::FindGroundZForCoord(posn.x, posn.y);
+    }
+    CRemote::GivePlayerRemoteControlledCar(posn, DegreesToRadians(angle), model);
+}
+
+void MakePlayerFireProof(CPlayerInfo& player, bool state) {
+    player.m_bFireProof = state;
+}
+
+uint8 GetPlayerMaxArmour(CPlayerInfo& player) {
+    return player.m_nMaxArmour;
+}
+
+void SetPlayerMood(CPlayerPed& player, eCJMood mood, uint32 time) {
+    CAEPedSpeechAudioEntity::SetCJMood(mood, time);
+}
+
+bool IsPlayerWearing(CPlayerPed& player, eClothesTexturePart bodyPart, std::string_view textureName) {
+    return player.GetClothesDesc()->m_anTextureKeys[bodyPart] == CKeyGen::GetUppercaseKey(textureName.data());
+}
+
+void SetPlayerCanDoDriveBy(CPlayerInfo& player, bool state) {
+    player.m_bCanDoDriveBy = state;
+}
+
+void SetPlayerDrunkenness(CPlayerInfo& player, uint8 intensity) {
+    player.m_PlayerData.m_nDrunkenness = intensity;
+    player.m_PlayerData.m_nFadeDrunkenness = 0;
+    if (!intensity) {
+        CMBlur::ClearDrunkBlur();
+    }
+}
+
+void IncreasePlayerMaxHealth(CPlayerInfo& player, uint8 value) {
+    player.m_nMaxHealth += value;
+    player.m_pPed->m_fHealth += value;
+}
+
+void IncreasePlayerMaxArmour(CPlayerInfo& player, uint8 value) {
+    player.m_nMaxArmour += value;
+    player.m_pPed->m_fArmour += value;
+}
+
+void EnsurePlayerHasDriveByWeapon(CPlayerPed& player, uint32 ammo) {
+    if (!player.bInVehicle) {
+        return;
+    }
+    auto type = player.GetWeaponInSlot(eWeaponSlot::SMG).GetType();
+    if (type) {
+        if (player.GetWeaponInSlot(eWeaponSlot::SMG).GetTotalAmmo() < ammo) {
+            player.SetAmmo(type, ammo);
+        }
+        return;
+    }
+
+    player.GiveWeapon(eWeaponType::WEAPON_MICRO_UZI, ammo, true);
+    if (player.GetSavedWeapon() == eWeaponType::WEAPON_UNIDENTIFIED) {
+        player.SetSavedWeapon(player.GetActiveWeapon().GetType());
+    }
+    player.SetCurrentWeapon(eWeaponType::WEAPON_MICRO_UZI);
+}
+
+bool IsPlayerInInfoZone(CPlayerInfo& player, std::string_view zoneName) {
+    return CTheZones::FindZone(player.GetPos(), zoneName, eZoneType::ZONE_TYPE_INFO);
+}
+
+bool IsPlayerTargettingAnything(CPlayerPed& player) {
+    return player.m_pTargetedObject;
+}
+
+void DisablePlayerSprint(CPlayerInfo& player, bool state) {
+    player.m_PlayerData.m_bPlayerSprintDisabled = state;
+}
+
+void DeletePlayer(uint32 playerIdx) {
+    CPlayerPed::RemovePlayerPed(playerIdx);
+}
+
+void BuildPlayerModel(CPlayerPed* player) {
+    CClothes::RebuildPlayer(player, false);
+    CReplay::Init();
+}
+
+void GivePlayerClothes(CPlayerPed& player, uint32 textureHash, uint32 modelHash, eClothesTexturePart bodyPart) {
+    player.GetClothesDesc()->SetTextureAndModel(textureHash, modelHash, bodyPart);
+}
+
+void PlayerEnteredBuildingsiteCrane() {
+    CRopes::PlayerControlsCrane = eControlledCrane::WRECKING_BALL;
+    CWaterLevel::m_bWaterFogScript = false;
+}
+
+void PlayerEnteredDockCrane() {
+    CRopes::PlayerControlsCrane = eControlledCrane::MAGNO_CRANE;
+    CWaterLevel::m_bWaterFogScript = false;
+}
+
+void PlayerEnteredLasVegasCrane() {
+    CRopes::PlayerControlsCrane = eControlledCrane::LAS_VEGAS_CRANE;
+    CWaterLevel::m_bWaterFogScript = false;
+}
+
+void PlayerEnteredQuarryCrane() {
+    CRopes::PlayerControlsCrane = eControlledCrane::QUARRY_CRANE;
+}
+
+void PlayerLeftCrane() {
+    CRopes::PlayerControlsCrane = eControlledCrane::NONE;
+    CWaterLevel::m_bWaterFogScript = true;
+}
+
+int32 GetPlayerGroup(CPlayerInfo& player) {
+    return CTheScripts::GetUniqueScriptThingIndex(player.m_PlayerData.m_nPlayerGroup, eScriptThingType::SCRIPT_THING_PED_GROUP);
+}
+
+void SetPlayerGroupRecruitment(CPlayerInfo& player, bool state) {
+    player.m_PlayerData.m_bGroupStuffDisabled = !state;
+}
+
+void SetPlayerEnterCarButton(uint32 playerIdx, bool state) {
+    CPad::GetPad(playerIdx)->bDisablePlayerEnterCar = !state;
+}
+
+bool IsPlayerPerformingWheelie(CPlayerInfo& player) {
+    return player.m_pPed->bInVehicle && player.m_pPed->m_pVehicle->GetVehicleAppearance() == eVehicleAppearance::VEHICLE_APPEARANCE_BIKE && player.m_nBikeRearWheelCounter;
+}
+
+bool IsPlayerPerformingStoppie(CPlayerInfo& player) {
+    return player.m_pPed->bInVehicle && player.m_pPed->m_pVehicle->GetVehicleAppearance() == eVehicleAppearance::VEHICLE_APPEARANCE_BIKE && player.m_nBikeFrontWheelCounter;
+}
+
 };
 
 void notsa::script::commands::player::RegisterHandlers() {
@@ -127,6 +381,62 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_HANDLER(COMMAND_SET_SWIM_SPEED, SetSwimSpeed);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_GROUP_TO_FOLLOW_ALWAYS, SetPlayerGroupToFollowAlways);
     REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_DUCK_BUTTON, SetPlayerAbleToUseCrouch);
+    REGISTER_COMMAND_HANDLER(COMMAND_ADD_SCORE, AddScore);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_SCORE_GREATER, IsScoreGreater);
+    REGISTER_COMMAND_HANDLER(COMMAND_STORE_SCORE, StoreScore);
+    REGISTER_COMMAND_HANDLER(COMMAND_ALTER_WANTED_LEVEL, AlterPlayerWantedLevel);
+    REGISTER_COMMAND_HANDLER(COMMAND_ALTER_WANTED_LEVEL_NO_DROP, AlterPlayerWantedLevelNoDrop);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_WANTED_LEVEL_GREATER, IsWantedLevelGreater);
+    REGISTER_COMMAND_HANDLER(COMMAND_CLEAR_WANTED_LEVEL, ClearWantedLevel);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_MAX_WANTED_LEVEL, SetMaxWantedLevel);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_DEAD, IsPlayerDead);
+    REGISTER_COMMAND_HANDLER(COMMAND_GET_PLAYER_CHAR, GetPlayerChar);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_PRESSING_HORN, IsPlayerPressingHorn);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_CONTROL, SetPlayerControl);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_POLICE_IGNORE_PLAYER, SetPoliceIgnorePlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_APPLY_BRAKES_TO_PLAYERS_CAR, ApplyBrakesToPlayersCar);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_IN_REMOTE_MODE, IsPlayerInRemoteMode);
+    REGISTER_COMMAND_HANDLER(COMMAND_GET_NUM_OF_MODELS_KILLED_BY_PLAYER, GetNumOfModelsKilledByPlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_RESET_NUM_OF_MODELS_KILLED_BY_PLAYER, ResetNumOfModelsKilledByPlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_NEVER_GETS_TIRED, SetPlayerNeverGetsTired);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_FAST_RELOAD, SetPlayerFastReload);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_EVERYONE_IGNORE_PLAYER, SetEveryoneIgnorePlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_CAN_PLAYER_START_MISSION, CanPlayerStartMission);
+    REGISTER_COMMAND_HANDLER(COMMAND_MAKE_PLAYER_SAFE_FOR_CUTSCENE, MakePlayerSafeForCutscene);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_TARGETTING_CHAR, IsPlayerTargettingChar);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_TARGETTING_OBJECT, IsPlayerTargettingObject);
+    REGISTER_COMMAND_HANDLER(COMMAND_GIVE_REMOTE_CONTROLLED_MODEL_TO_PLAYER, GiveRemoteControlledModelToPlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_MAKE_PLAYER_FIRE_PROOF, MakePlayerFireProof);
+    REGISTER_COMMAND_HANDLER(COMMAND_GET_PLAYER_MAX_ARMOUR, GetPlayerMaxArmour);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_MOOD, SetPlayerMood);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_WEARING, IsPlayerWearing);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_CAN_DO_DRIVE_BY, SetPlayerCanDoDriveBy);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_DRUNKENNESS, SetPlayerDrunkenness);
+    REGISTER_COMMAND_HANDLER(COMMAND_INCREASE_PLAYER_MAX_HEALTH, IncreasePlayerMaxHealth);
+    REGISTER_COMMAND_HANDLER(COMMAND_INCREASE_PLAYER_MAX_ARMOUR, IncreasePlayerMaxArmour);
+    REGISTER_COMMAND_HANDLER(COMMAND_ENSURE_PLAYER_HAS_DRIVE_BY_WEAPON, EnsurePlayerHasDriveByWeapon);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_IN_INFO_ZONE, IsPlayerInInfoZone);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_TARGETTING_ANYTHING, IsPlayerTargettingAnything);
+    REGISTER_COMMAND_HANDLER(COMMAND_DISABLE_PLAYER_SPRINT, DisablePlayerSprint);
+    REGISTER_COMMAND_HANDLER(COMMAND_DELETE_PLAYER, DeletePlayer);
+    REGISTER_COMMAND_HANDLER(COMMAND_BUILD_PLAYER_MODEL, BuildPlayerModel);
+    REGISTER_COMMAND_HANDLER(COMMAND_GIVE_PLAYER_CLOTHES, GivePlayerClothes);
+    REGISTER_COMMAND_HANDLER(COMMAND_PLAYER_ENTERED_BUILDINGSITE_CRANE, PlayerEnteredBuildingsiteCrane);
+    REGISTER_COMMAND_HANDLER(COMMAND_PLAYER_ENTERED_DOCK_CRANE, PlayerEnteredDockCrane);
+    REGISTER_COMMAND_HANDLER(COMMAND_PLAYER_ENTERED_LAS_VEGAS_CRANE, PlayerEnteredLasVegasCrane);
+    REGISTER_COMMAND_HANDLER(COMMAND_PLAYER_ENTERED_QUARRY_CRANE, PlayerEnteredQuarryCrane);
+    REGISTER_COMMAND_HANDLER(COMMAND_PLAYER_LEFT_CRANE, PlayerLeftCrane);
+    REGISTER_COMMAND_HANDLER(COMMAND_GET_PLAYER_GROUP, GetPlayerGroup);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_GROUP_RECRUITMENT, SetPlayerGroupRecruitment);
+    REGISTER_COMMAND_HANDLER(COMMAND_SET_PLAYER_ENTER_CAR_BUTTON, SetPlayerEnterCarButton);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_PERFORMING_WHEELIE, IsPlayerPerformingWheelie);
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_PERFORMING_STOPPIE, IsPlayerPerformingStoppie);
+
+
+    // NOPs
+    REGISTER_COMMAND_HANDLER(COMMAND_GIVE_REMOTE_CONTROLLED_CAR_TO_PLAYER, [](){});
+    REGISTER_COMMAND_HANDLER(COMMAND_SHUT_PLAYER_UP, [](uint32, uint32){});
+    REGISTER_COMMAND_HANDLER(COMMAND_IS_PLAYER_IN_SHORTCUT_TAXI, [](uint32) {});
 
 
     REGISTER_UNSUPPORTED_COMMAND_HANDLER(COMMAND_IS_PLAYER_TOUCHING_OBJECT, IsPlayerTouchingObject);
@@ -146,6 +456,25 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_STOPPED_IN_ANGLED_AREA_3D);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_STOPPED_IN_ANGLED_AREA_ON_FOOT_3D);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_STOPPED_IN_ANGLED_AREA_IN_CAR_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ON_FOOT_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_ANY_MEANS_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_ON_FOOT_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_IN_CAR_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ON_FOOT_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ON_FOOT_CAR_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_ANY_MEANS_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_ON_FOOT_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_STOPPED_PLAYER_IN_CAR_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_CAR_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ON_FOOT_CAR_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_CAR_2D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_CAR_3D);
+    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_CAR_3D);
+
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_SHOOTING_IN_AREA);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_CURRENT_PLAYER_WEAPON);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_TAXI);
@@ -165,8 +494,6 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_CAR);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_MODEL);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_ANY_CAR);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_DEAD);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_PRESSING_HORN);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_WARP_PLAYER_FROM_CAR_TO_COORD);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_PLAYER_HEADING);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_HEADING);
@@ -185,26 +512,13 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_CURRENT_PLAYER_WEAPON);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_TURN_PLAYER_TO_FACE_COORD);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_AS_LEADER);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_POLICE_IGNORE_PLAYER);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_CAR_2D);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ON_FOOT_CAR_2D);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_CAR_2D);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_ANY_MEANS_CAR_3D);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_LOCATE_PLAYER_IN_CAR_CAR_3D);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_TURN_PLAYER_TO_FACE_CHAR);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_APPLY_BRAKES_TO_PLAYERS_CAR);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_HEALTH);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_PLAYER_HEALTH);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_STOP_PLAYER_LOOKING);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_GANG_PLAYER_ATTITUDE);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_REMOTE_MODE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_ANIM_GROUP_FOR_PLAYER);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_NUM_OF_MODELS_KILLED_BY_PLAYER);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_NEVER_GETS_TIRED);
-    REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_FAST_RELOAD);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_EVERYONE_IGNORE_PLAYER);
     //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_CAMERA_IN_FRONT_OF_PLAYER);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_MAKE_PLAYER_SAFE_FOR_CUTSCENE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_MAKE_PLAYER_UNSAFE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_MAKE_PLAYER_SAFE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_AMMO_IN_PLAYER_WEAPON);
@@ -216,9 +530,6 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_JAMES_CAR_ON_PATH_TO_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_ENABLE_PLAYER_CONTROL_CAMERA);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_TARGETTING_ANY_CHAR);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_TARGETTING_CHAR);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_TARGETTING_OBJECT);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GIVE_REMOTE_CONTROLLED_MODEL_TO_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_CURRENT_PLAYER_WEAPON);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_ON_ANY_BIKE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_HAS_PLAYER_GOT_WEAPON);
@@ -231,9 +542,6 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_RESET_HAVOC_CAUSED_BY_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_HAVOC_CAUSED_BY_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_IN_FLYING_VEHICLE);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SHUT_PLAYER_UP);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_MOOD);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_WEARING);
     //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_CAN_DO_DRIVE_BY);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_PLAYER_DRUNKENNESS);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_DRUG_LEVEL);
@@ -242,7 +550,6 @@ void notsa::script::commands::player::RegisterHandlers() {
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_IS_PLAYER_TOUCHING_VEHICLE);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_CHECK_FOR_PED_MODEL_AROUND_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_PLAYER_HAS_MET_DEBBIE_HARRY);
-    //REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_MAKE_PLAYER_FIRE_PROOF);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_GET_BUS_FARES_COLLECTED_BY_PLAYER);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_SET_GANG_ATTACK_PLAYER_WITH_COPS);
     REGISTER_COMMAND_UNIMPLEMENTED(COMMAND_TASK_PLAYER_ON_FOOT);
