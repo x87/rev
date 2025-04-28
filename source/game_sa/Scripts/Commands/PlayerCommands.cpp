@@ -211,7 +211,7 @@ bool IsPlayerInRemoteMode(CPlayerInfo& player) {
 
 /// GET_NUM_OF_MODELS_KILLED_BY_PLAYER(0298)
 int16 GetNumOfModelsKilledByPlayer(uint32 playerIdx, eModelID model) {
-    return CDarkel::QueryModelsKilledByPlayer(playerIdx, model);
+    return CDarkel::QueryModelsKilledByPlayer(model, playerIdx);
 }
 
 /// RESET_NUM_OF_MODELS_KILLED_BY_PLAYER(0297)
