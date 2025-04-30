@@ -303,7 +303,7 @@ public:
     uint8               m_nActiveWeaponSlot;
     uint8               m_nWeaponShootingRate;
     uint8               m_nWeaponAccuracy;
-    CEntity*            m_pTargetedObject;
+    CEntity*            m_pTargetedObject; // lock-on target
     int32               field_720;
     int32               field_724;
     int32               field_728;
