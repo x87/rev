@@ -307,13 +307,13 @@ void SetPlayerDrunkenness(CPlayerInfo& player, uint8 intensity) {
 /// INCREASE_PLAYER_MAX_HEALTH(055E)
 void IncreasePlayerMaxHealth(CPlayerInfo& player, uint8 value) {
     player.m_nMaxHealth += value;
-    player.m_pPed->m_fHealth += value;
+    player.m_pPed->m_fHealth = player.m_nMaxHealth;
 }
 
 /// INCREASE_PLAYER_MAX_ARMOUR(055F)
 void IncreasePlayerMaxArmour(CPlayerInfo& player, uint8 value) {
     player.m_nMaxArmour += value;
-    player.m_pPed->m_fArmour += value;
+    player.m_pPed->m_fArmour = player.m_nMaxArmour;
 }
 
 /// ENSURE_PLAYER_HAS_DRIVE_BY_WEAPON(0563)
