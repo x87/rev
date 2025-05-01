@@ -363,7 +363,7 @@ void BuildPlayerModel(CPlayerPed* player) {
 }
 
 /// GIVE_PLAYER_CLOTHES(0784)
-void GivePlayerClothes(CPlayerPed& player, uint32 textureHash, uint32 modelHash, eClothesTexturePart bodyPart) {
+void GivePlayerClothes(CPlayerPed& player, int textureHash, int modelHash, eClothesTexturePart bodyPart) {
     player.GetClothesDesc()->SetTextureAndModel(textureHash, modelHash, bodyPart);
 }
 
