@@ -786,11 +786,14 @@ void CPlayerPed::DrawTriangleForMouseRecruitPed() {
 
 // 0x60C0C0
 bool CPlayerPed::DoesTargetHaveToBeBroken(CEntity* entity, CWeapon* weapon) {
-    if (entity->m_bIsVisible)
+    if (!entity->m_bIsVisible) {
         return true;
+    }
 
-    if (weapon->GetWeaponInfo(this).m_fTargetRange < (entity->GetPosition() - GetPosition()).Magnitude())
+    auto weaponRange = weapon->GetWeaponInfo(this).m_fTargetRange * CWeapon::TargetWeaponRangeMultiplier(entity, this);
+    if (weaponRange < (entity->GetPosition() - GetPosition()).Magnitude()) {
         return true;
+    }
 
     if (weapon->m_Type == eWeaponType::WEAPON_SPRAYCAN) {
         if (entity->IsBuilding()) {
@@ -802,7 +805,7 @@ bool CPlayerPed::DoesTargetHaveToBeBroken(CEntity* entity, CWeapon* weapon) {
         }
     }
 
-    return CanIKReachThisTarget(entity->GetPosition(), weapon, false);
+    return !CanIKReachThisTarget(entity->GetPosition(), weapon, false);
 }
 
 // 0x60C1E0
