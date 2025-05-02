@@ -1958,10 +1958,6 @@ CWeaponInfo& CWeapon::GetWeaponInfo(eWeaponSkill skill) const {
     return *CWeaponInfo::GetWeaponInfo(GetType(), skill);
 }
 
-auto CWeapon::GetWeaponRange(CEntity* target, CPed* owner) const noexcept {
-    return GetWeaponInfo(owner)
-}
-
 // 0x73AF00
 void FireOneInstantHitRound(const CVector& startPoint, const CVector& endPoint, int32 intensity) {
     CPointLights::AddLight(
