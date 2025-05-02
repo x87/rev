@@ -363,6 +363,8 @@ void BuildPlayerModel(CPlayerPed* player) {
 }
 
 /// GIVE_PLAYER_CLOTHES(0784)
+// TODO/FIXME: The hashes here should really be `uint32`,
+// but no can do, because `safe_arithmetic_cast` fails (when casting from the read `int32` to the requested `uint32`)
 void GivePlayerClothes(CPlayerPed& player, int32 textureHash, int32 modelHash, eClothesTexturePart bodyPart) {
     player.GetClothesDesc()->SetTextureAndModel(textureHash, modelHash, bodyPart);
 }
