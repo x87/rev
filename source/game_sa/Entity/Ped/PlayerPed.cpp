@@ -790,8 +790,7 @@ bool CPlayerPed::DoesTargetHaveToBeBroken(CEntity* entity, CWeapon* weapon) {
         return true;
     }
 
-    auto weaponRange = weapon->GetWeaponInfo(this).m_fTargetRange * CWeapon::TargetWeaponRangeMultiplier(entity, this);
-    if (weaponRange < (entity->GetPosition() - GetPosition()).Magnitude()) {
+    if (weapon->GetWeaponRange(entity, this) < (entity->GetPosition() - GetPosition()).Magnitude()) {
         return true;
     }
 

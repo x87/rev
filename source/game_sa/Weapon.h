@@ -132,6 +132,16 @@ public:
     auto GetAmmoInClip()    const noexcept { return m_AmmoInClip; }
     auto GetTotalAmmo()     const noexcept { return m_TotalAmmo; }
 
+    // notsa
+    template<typename T>
+    auto GetWeaponRange(CEntity* target = nullptr, T ownerOrSkill) const noexcept {
+        const auto r = GetWeaponInfo(ownerOrSkill).m_fTargetRange;
+        if (target) {
+            return r * CWeapon::TargetWeaponRangeMultiplier(target, this);
+        }
+        return r;
+    }
+
 private:
     friend void InjectHooksMain();
     static void InjectHooks();
