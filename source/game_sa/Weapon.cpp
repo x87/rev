@@ -433,20 +433,20 @@ void CWeapon::StopWeaponEffect() {
 }
 
 // 0x73B380
-float CWeapon::TargetWeaponRangeMultiplier(CEntity* victim, CEntity* weaponOwner) {
-    if (!victim || !weaponOwner) {
+float CWeapon::TargetWeaponRangeMultiplier(CEntity* target, CEntity* weaponOwner) {
+    if (!target || !weaponOwner) {
         return 1.0f;
     }
 
-    switch (victim->m_nType) {
+    switch (target->m_nType) {
     case ENTITY_TYPE_VEHICLE: {
-        if (!victim->AsVehicle()->IsBike()) {
+        if (!target->AsVehicle()->IsBike()) {
             return 3.0f;
         }
         break;
     }
     case ENTITY_TYPE_PED: {
-        CPed* pedVictim = victim->AsPed();
+        CPed* pedVictim = target->AsPed();
 
         if (pedVictim->m_pVehicle && !pedVictim->m_pVehicle->IsBike()) {
             return 3.0f;
@@ -1958,6 +1958,10 @@ CWeaponInfo& CWeapon::GetWeaponInfo(eWeaponSkill skill) const {
     return *CWeaponInfo::GetWeaponInfo(GetType(), skill);
 }
 
+auto CWeapon::GetWeaponRange(CEntity* target, CPed* owner) const noexcept {
+    return GetWeaponInfo(owner)
+}
+
 // 0x73AF00
 void FireOneInstantHitRound(const CVector& startPoint, const CVector& endPoint, int32 intensity) {
     CPointLights::AddLight(
@@ -2051,4 +2055,12 @@ void FireOneInstantHitRound(const CVector& startPoint, const CVector& endPoint, 
             );
         }
     }
+}
+
+float CWeapon::GetWeaponRange(CPed* owner, CEntity* target) const noexcept {
+    const auto r = GetWeaponInfo(owner).m_fTargetRange;
+    if (target) {
+        return r * TargetWeaponRangeMultiplier(target, owner);
+    }
+    return r;
 }

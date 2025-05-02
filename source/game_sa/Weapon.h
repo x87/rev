@@ -107,7 +107,7 @@ public:
 
     static bool GenerateDamageEvent(CPed* victim, CEntity* creator, eWeaponType weaponType, int32 damageFactor, ePedPieceTypes pedPiece, uint8 direction);
     static bool CanBeUsedFor2Player(eWeaponType weaponType);
-    static float TargetWeaponRangeMultiplier(CEntity* victim, CEntity* weaponOwner);
+    static float TargetWeaponRangeMultiplier(CEntity* target, CEntity* weaponOwner);
 
     /*!
     * @addr 0x73CDC0
@@ -132,15 +132,8 @@ public:
     auto GetAmmoInClip()    const noexcept { return m_AmmoInClip; }
     auto GetTotalAmmo()     const noexcept { return m_TotalAmmo; }
 
-    // notsa
-    template<typename T>
-    auto GetWeaponRange(CEntity* target = nullptr, T ownerOrSkill) const noexcept {
-        const auto r = GetWeaponInfo(ownerOrSkill).m_fTargetRange;
-        if (target) {
-            return r * CWeapon::TargetWeaponRangeMultiplier(target, this);
-        }
-        return r;
-    }
+    //! @notsa
+    float GetWeaponRange(CPed* owner, CEntity* target = nullptr) const noexcept;
 
 private:
     friend void InjectHooksMain();
