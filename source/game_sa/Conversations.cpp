@@ -55,7 +55,28 @@ void CConversations::SetUpConversationNode(
     int32       answerYesWAV,
     int32       answerNoWAV
 ) {
-    plugin::Call<0x43A870, const char*, const char*, const char*, int32, int32, int32>(questionKey, answerYesKey, answerNoKey, questionWAV, answerYesWAV, answerNoWAV);
+    auto& node = CConversations::m_aTempNodes[CConversations::m_SettingUpConversationNumNodes];
+    strncpy(node.m_Name, questionKey, 6u);
+    MakeUpperCase(node.m_Name);
+
+    node.m_Speech  = questionWAV;
+    node.m_SpeechY = answerYesWAV;
+    node.m_SpeechN = answerNoWAV;
+
+    if (answerYesKey) {
+        strncpy(node.m_NameNodeYes, answerYesKey, 6u);
+        MakeUpperCase(node.m_NameNodeYes);
+    } else {
+        node.m_NameNodeYes[0] = '\0';
+    }
+    if (answerNoKey) {
+        strncpy(node.m_NameNodeNo, answerNoKey, 6u);
+        MakeUpperCase(node.m_NameNodeNo);
+    } else {
+        node.m_NameNodeNo[0] = '\0';
+    }
+    ++CConversations::m_SettingUpConversationNumNodes;
+
 }
 
 // 0x43A960
@@ -71,7 +92,7 @@ bool CConversations::IsPlayerInPositionForConversation(CPed* ped, bool randomCon
 // 0x43AAC0
 bool CConversations::IsConversationGoingOn() {
     for (const auto& conversation : m_Conversations) {
-        if (conversation.m_CurrentNode) {
+        if (conversation.m_Status != CConversationForPed::eStatus::INACTIVE) {
             return true;
         }
     }
