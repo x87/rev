@@ -627,11 +627,12 @@ CPed& CreateCharInsideCar(CRunningScript& S, CVehicle& veh, ePedType pedType, eM
     return *ped;
 }
 
-// SET_CHAR_HEALTH
+/// SET_CHAR_HEALTH(0223)
 auto SetCharHealth(CPed& ped, float health) {
     if (health != 0.f) {
         if (ped.IsPlayer()) {
-            ped.m_fHealth = std::min(health, ped.m_fMaxHealth);
+            const auto slot = CWorld::FindPlayerSlotWithPedPointer(&ped);
+            ped.m_fHealth = std::min(health, (float)CWorld::Players[slot].m_nMaxHealth);
         } else {
             ped.m_fHealth = health;
             if (ped.m_fMaxHealth == 100.f) {
