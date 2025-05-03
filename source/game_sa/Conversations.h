@@ -110,19 +110,19 @@ public:
     static bool                        IsPlayerInPositionForConversation(CPed* ped, bool randomConversation);
     static bool                        IsConversationGoingOn();
     static inline CConversationForPed* FindConversationForPed(CPed* ped);
-    static bool                        IsConversationAtNode(char* pName, CPed* pPed);
+    static bool                        IsConversationAtNode(const char* pName, CPed* pPed);
     static void                        AwkwardSay(int32 whatToSay, CPed* speaker);
 
     static inline CConversationForPed::eStatus GetConversationStatus(CPed* ped) { return FindConversationForPed(ped)->m_Status; }
     static inline void EnableConversation(CPed* ped, bool enabled) { FindConversationForPed(ped)->m_Enabled = enabled; }
+    static void StartSettingUpConversation(CPed* ped);
+    static void DoneSettingUpConversation(bool bSuppressSubtitles);
 
 
 
     /*
-    static void DoneSettingUpConversation(bool);
     static void FindFreeNodeSlot();
     static void FindFreeConversationSlot();
-    static void StartSettingUpConversation(CPed* ped);
     
      */
 };

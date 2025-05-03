@@ -100,14 +100,15 @@ bool CConversations::IsConversationGoingOn() {
 }
 
 // 0x43B000
-bool CConversations::IsConversationAtNode(char* pName, CPed* pPed) {
+bool CConversations::IsConversationAtNode(const char* pName, CPed* pPed) {
     auto conversation = FindConversationForPed(pPed);
     assert(conversation);
 
     if (conversation->m_CurrentNode < 0 || conversation->m_Status == CConversationForPed::eStatus::PLAYER_SPEAKING) {
         return false;
     }
-    return !strcmp(MakeUpperCase(pName), CConversations::m_Nodes[conversation->m_CurrentNode].m_Name);
+    // NOTSA - using stricmp instead of MakeUpperCase + strcmp
+    return !stricmp(pName, CConversations::m_Nodes[conversation->m_CurrentNode].m_Name);
 }
 
 // 0x43A810
