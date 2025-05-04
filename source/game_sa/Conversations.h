@@ -18,13 +18,13 @@ public:
         WAITINGTOFINISH,
     };
 
-    static inline eP2pState& m_State                        = *(eP2pState*)0x969A20;
-    static inline CPed*&     m_pPed                         = *(CPed**)0x9691C0;
-    static inline int32&     m_Topic                        = *(int32*)0x9691BC;
-    static inline uint32&    m_TimeOfLastPlayerConversation = *(uint32*)0x9691B4;
-    static inline uint32&    m_StartTime                    = *(uint32*)0x9691B8;
-    static inline bool&      m_bPositiveReply               = *(bool*)0x9691B0; // unused
-    static inline bool&      m_bPositiveOpening             = *(bool*)0x9691B1;
+    static inline eP2pState& m_State                        = StaticRef<eP2pState, 0x969A20>();
+    static inline CPed*&     m_pPed                         = StaticRef<CPed*, 0x9691C0>();
+    static inline int32&     m_Topic                        = StaticRef<int32, 0x9691BC>();
+    static inline uint32&    m_TimeOfLastPlayerConversation = StaticRef<uint32, 0x9691B4>();
+    static inline uint32&    m_StartTime                    = StaticRef<uint32, 0x9691B8>();
+    static inline bool&      m_bPositiveReply               = StaticRef<bool, 0x9691B0>(); // unused
+    static inline bool&      m_bPositiveOpening             = StaticRef<bool, 0x9691B1>();
 
     static void Clear();
     static void Update();
@@ -95,30 +95,26 @@ public:
         PLAYING  = 2,
     };
 
-    static inline eAwkwardSayStatus& m_AwkwardSayStatus              = *(eAwkwardSayStatus*)0x9691C4;
-    static inline bool&              m_SettingUpConversation         = *(bool*)0x9691D0;
-    static inline auto&              m_Conversations                 = *(std::array<CConversationForPed, MAX_NUM_CONVERSATIONS>*)0x009691EC;
-    static inline auto&              m_Nodes                         = *(std::array<CConversationNode, MAX_NUM_CONVERSATION_NODES>*)0x969570;
-    static inline auto&              m_aTempNodes                    = *(std::array<CTempConversationNode, MAX_NUM_TEMP_CONVERSATION_NODES>*)0x969360;
-    static inline auto&              m_SettingUpConversationNumNodes = *(int32*)0x009691C8;
+    static inline eAwkwardSayStatus& m_AwkwardSayStatus              = StaticRef<eAwkwardSayStatus, 0x9691C4>();
+    static inline bool&              m_SettingUpConversation         = StaticRef<bool, 0x9691D0>();
+    static inline auto&              m_Conversations                 = StaticRef<std::array<CConversationForPed, MAX_NUM_CONVERSATIONS>, 0x9695A0>();
+    static inline auto&              m_Nodes                         = StaticRef<std::array<CConversationNode, MAX_NUM_CONVERSATION_NODES>, 0x969570>();
+    static inline auto&              m_aTempNodes                    = StaticRef<std::array<CTempConversationNode, MAX_NUM_TEMP_CONVERSATION_NODES>, 0x969360>();
+    static inline auto&              m_SettingUpConversationNumNodes = StaticRef<int32, 0x9691C8>();
 
     static void Clear();
     static void RemoveConversationForPed(CPed* ped);
 
-    static void Update();
-    static void SetUpConversationNode(const char* questionKey, const char* answerYesKey, const char* answerNoKey, int32 questionWAV, int32 answerYesWAV, int32 answerNoWAV);
+    static void                        Update();
+    static void                        SetUpConversationNode(const char* questionKey, const char* answerYesKey, const char* answerNoKey, int32 questionWAV, int32 answerYesWAV, int32 answerNoWAV);
     static bool                        IsPlayerInPositionForConversation(CPed* ped, bool randomConversation);
     static bool                        IsConversationGoingOn();
     static inline CConversationForPed* FindConversationForPed(CPed* ped);
     static bool                        IsConversationAtNode(const char* pName, CPed* pPed);
     static void                        AwkwardSay(int32 whatToSay, CPed* speaker);
-
-    static inline CConversationForPed::eStatus GetConversationStatus(CPed* ped) { return FindConversationForPed(ped)->m_Status; }
-    static inline void EnableConversation(CPed* ped, bool enabled) { FindConversationForPed(ped)->m_Enabled = enabled; }
-    static void StartSettingUpConversation(CPed* ped);
-    static void DoneSettingUpConversation(bool bSuppressSubtitles);
-
-
+    static void                        EnableConversation(CPed* ped, bool enabled);
+    static void                        StartSettingUpConversation(CPed* ped);
+    static void                        DoneSettingUpConversation(bool bSuppressSubtitles);
 
     /*
     static void FindFreeNodeSlot();

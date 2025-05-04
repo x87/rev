@@ -40,6 +40,7 @@ void CConversations::Clear() {
     m_AwkwardSayStatus      = eAwkwardSayStatus::INACTIVE;
 }
 
+// 0x43C590
 void CConversations::Update() {
     ZoneScoped;
 
@@ -116,6 +117,22 @@ void CConversations::AwkwardSay(int32 whatToSay, CPed* speaker) {
     AudioEngine.PreloadMissionAudio(0, whatToSay);
     AudioEngine.AttachMissionAudioToPed(0, speaker);
     m_AwkwardSayStatus = eAwkwardSayStatus::LOADING;
+}
+
+
+// 0x43AA40
+void CConversations::EnableConversation(CPed* ped, bool enabled) {
+    FindConversationForPed(ped)->m_Enabled = enabled;
+}
+
+// 0x43A840
+void CConversations::StartSettingUpConversation(CPed* ped) {
+    plugin::Call<0x43A840, CPed*>(ped);
+}
+
+// 0x43ADB0
+void CConversations::DoneSettingUpConversation(bool bSuppressSubtitles) {
+    plugin::Call<0x43ADB0, bool>(bSuppressSubtitles);
 }
 
 inline void CConversationForPed::Clear(bool dontClearNodes) {
