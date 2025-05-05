@@ -101,6 +101,8 @@ public:
     static inline auto&              m_Nodes                         = StaticRef<std::array<CConversationNode, MAX_NUM_CONVERSATION_NODES>, 0x969570>();
     static inline auto&              m_aTempNodes                    = StaticRef<std::array<CTempConversationNode, MAX_NUM_TEMP_CONVERSATION_NODES>, 0x969360>();
     static inline auto&              m_SettingUpConversationNumNodes = StaticRef<int32, 0x9691C8>();
+    static inline auto&              m_SettingUpConversationPed      = StaticRef<CPed*, 0x9691CC>();
+
 
     static void Clear();
     static void RemoveConversationForPed(CPed* ped);
