@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "Conversations.h"
+#include "IKChainManager_c.h"
 
 // 0x43AAE0
 void CPedToPlayerConversations::Clear() {
@@ -21,7 +22,22 @@ void CPedToPlayerConversations::Update() {
 
 // 0x43AB10
 void CPedToPlayerConversations::EndConversation() {
-    plugin::Call<0x43AB10>();
+    m_State           = eP2pState::INACTIVE;
+
+    CAEPedSpeechAudioEntity::ReleasePlayerConversation();
+
+    if (m_pPed) {
+        m_pPed->EnablePedSpeech();
+    }
+
+    const auto player = FindPlayerPed(-1);
+    if (g_ikChainMan.IsLooking(player)) {
+        g_ikChainMan.AbortLookAt(player, 250);
+    }
+
+    if (m_pPed && g_ikChainMan.IsLooking(m_pPed)) {
+        return g_ikChainMan.AbortLookAt(m_pPed, 250);
+    }
 }
 
 // 0x43A7B0
@@ -44,7 +60,29 @@ void CConversations::Clear() {
 void CConversations::Update() {
     ZoneScoped;
 
-    plugin::Call<0x43C590>();
+    const auto updateConversations = [&]() {
+        for (auto& conversation : m_Conversations) {
+            conversation.Update();
+        }
+    };
+
+    switch (m_AwkwardSayStatus) {
+    case eAwkwardSayStatus::LOADING:
+        if (AudioEngine.GetMissionAudioLoadingStatus(0) == 1) {
+            AudioEngine.PlayLoadedMissionAudio(0);
+            m_AwkwardSayStatus = eAwkwardSayStatus::PLAYING;
+        }
+        break;
+    case eAwkwardSayStatus::PLAYING:
+        if (AudioEngine.IsMissionAudioSampleFinished(0)) {
+            m_AwkwardSayStatus = eAwkwardSayStatus::INACTIVE;
+            updateConversations();
+        }
+        break;
+    case eAwkwardSayStatus::INACTIVE:
+        updateConversations();
+        break;
+    }
 }
 
 // 0x43A870
@@ -77,12 +115,15 @@ void CConversations::SetUpConversationNode(
         node.m_NameNodeNo[0] = '\0';
     }
     ++CConversations::m_SettingUpConversationNumNodes;
-
 }
 
 // 0x43A960
 void CConversations::RemoveConversationForPed(CPed* ped) {
-    plugin::Call<0x43A960, CPed*>(ped);
+    for (auto& conversation : m_Conversations) {
+        if (conversation.m_pPed == ped) {
+            conversation.Clear(false);
+        }
+    }
 }
 
 // 0x43B0B0
@@ -119,7 +160,6 @@ void CConversations::AwkwardSay(int32 whatToSay, CPed* speaker) {
     m_AwkwardSayStatus = eAwkwardSayStatus::LOADING;
 }
 
-
 // 0x43AA40
 void CConversations::EnableConversation(CPed* ped, bool enabled) {
     FindConversationForPed(ped)->m_Enabled = enabled;
@@ -127,7 +167,10 @@ void CConversations::EnableConversation(CPed* ped, bool enabled) {
 
 // 0x43A840
 void CConversations::StartSettingUpConversation(CPed* ped) {
-    plugin::Call<0x43A840, CPed*>(ped);
+    m_SettingUpConversationPed = ped;
+    ped->RegisterReference(m_SettingUpConversationPed);
+    m_SettingUpConversationNumNodes = 0;
+    m_SettingUpConversation         = true;
 }
 
 // 0x43ADB0
