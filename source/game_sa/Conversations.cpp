@@ -2,6 +2,25 @@
 #include "Conversations.h"
 #include "IKChainManager_c.h"
 
+void CConversations::InjectHooks() {
+    RH_ScopedClass(CConversations);
+    RH_ScopedCategoryGlobal();
+
+    RH_ScopedInstall(Clear, 0x43A7B0);
+    RH_ScopedInstall(Update, 0x43C590);
+    RH_ScopedInstall(SetUpConversationNode, 0x43A870);
+    RH_ScopedInstall(RemoveConversationForPed, 0x43A960);
+    RH_ScopedInstall(IsPlayerInPositionForConversation, 0x43B0B0);
+    RH_ScopedInstall(IsConversationGoingOn, 0x43AAC0);
+    RH_ScopedInstall(IsConversationAtNode, 0x43B000);
+    RH_ScopedInstall(AwkwardSay, 0x43A810);
+    RH_ScopedInstall(EnableConversation, 0x43A7F0);
+    RH_ScopedInstall(StartSettingUpConversation, 0x43A840);
+    RH_ScopedInstall(DoneSettingUpConversation, 0x43ADB0, {.reversed = false});
+
+}
+
+
 // 0x43AAE0
 void CPedToPlayerConversations::Clear() {
     ZoneScoped;

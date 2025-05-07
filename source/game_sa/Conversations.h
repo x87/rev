@@ -97,13 +97,13 @@ public:
 
     static inline eAwkwardSayStatus& m_AwkwardSayStatus              = StaticRef<eAwkwardSayStatus, 0x9691C4>();
     static inline bool&              m_SettingUpConversation         = StaticRef<bool, 0x9691D0>();
-    static inline auto&              m_Conversations                 = StaticRef<std::array<CConversationForPed, MAX_NUM_CONVERSATIONS>, 0x9695A0>();
+    static inline auto&              m_Conversations                 = StaticRef<std::array<CConversationForPed, MAX_NUM_CONVERSATIONS>, 0x9691D8>();
     static inline auto&              m_Nodes                         = StaticRef<std::array<CConversationNode, MAX_NUM_CONVERSATION_NODES>, 0x969570>();
     static inline auto&              m_aTempNodes                    = StaticRef<std::array<CTempConversationNode, MAX_NUM_TEMP_CONVERSATION_NODES>, 0x969360>();
     static inline auto&              m_SettingUpConversationNumNodes = StaticRef<int32, 0x9691C8>();
     static inline auto&              m_SettingUpConversationPed      = StaticRef<CPed*, 0x9691CC>();
 
-
+    static void InjectHooks();
     static void Clear();
     static void RemoveConversationForPed(CPed* ped);
 
