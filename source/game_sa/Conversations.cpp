@@ -35,6 +35,12 @@ void CConversationForPed::InjectHooks() {
     RH_ScopedInstall(IsPlayerInPositionForConversation, 0x43AC40);
 }
 
+void CConversationNode::InjectHooks() {
+    RH_ScopedClass(CConversationNode);
+    RH_ScopedCategory("Conversations");
+    RH_ScopedInstall(ClearRecursively, 0x43A7A0);
+}
+
 
 // 0x43AAE0
 void CPedToPlayerConversations::Clear() {
@@ -252,6 +258,7 @@ inline void CConversationNode::Clear() {
     m_SpeechN = 0;
 }
 
+// 0x43A710
 void CConversationNode::ClearRecursively() {
     if (m_NodeYes >= 0) {
         CConversations::m_Nodes[m_NodeYes].ClearRecursively();
