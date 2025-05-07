@@ -4,7 +4,7 @@
 
 void CConversations::InjectHooks() {
     RH_ScopedClass(CConversations);
-    RH_ScopedCategoryGlobal();
+    RH_ScopedCategory("Conversations");
 
     RH_ScopedInstall(Clear, 0x43A7B0);
     RH_ScopedInstall(Update, 0x43C590);
@@ -18,6 +18,21 @@ void CConversations::InjectHooks() {
     RH_ScopedInstall(StartSettingUpConversation, 0x43A840);
     RH_ScopedInstall(DoneSettingUpConversation, 0x43ADB0, {.reversed = false});
 
+}
+
+void CPedToPlayerConversations::InjectHooks() {
+    RH_ScopedClass(CPedToPlayerConversations);
+    RH_ScopedCategory("Conversations");
+    RH_ScopedInstall(Clear, 0x43AAE0);
+    RH_ScopedInstall(Update, 0x43B0F0, {.reversed = false});
+    RH_ScopedInstall(EndConversation, 0x43AB10);
+}
+
+void CConversationForPed::InjectHooks() {
+    RH_ScopedClass(CConversationForPed);
+    RH_ScopedCategory("Conversations");
+    RH_ScopedInstall(Update, 0x43C190, {.reversed = false});
+    RH_ScopedInstall(IsPlayerInPositionForConversation, 0x43AC40);
 }
 
 

@@ -26,6 +26,7 @@ public:
     static inline bool&      m_bPositiveReply               = StaticRef<bool, 0x9691B0>(); // unused
     static inline bool&      m_bPositiveOpening             = StaticRef<bool, 0x9691B1>();
 
+    static void InjectHooks();
     static void Clear();
     static void Update();
     static void EndConversation();
@@ -52,15 +53,15 @@ public:
     char  m_NameNodeYes[8];
     char  m_NameNodeNo[8];
     int32 m_FinalSlot;
-    int32 m_NodeYes;
-    int32 m_NodeNo;
+    int16 m_NodeYes;
+    int16 m_NodeNo;
     int32 m_Speech;
     int32 m_SpeechY;
     int32 m_SpeechN;
     //void  Clear();
 };
 
-VALIDATE_SIZE(CTempConversationNode, 0x30);
+VALIDATE_SIZE(CTempConversationNode, 0x2C);
 
 class CConversationForPed {
 public:
@@ -80,6 +81,7 @@ public:
     bool    m_Enabled;
     bool    m_SuppressSubtitles;
 
+    static void InjectHooks();
     inline void Clear(bool dontClearNodes);
     void        Update();
     bool        IsPlayerInPositionForConversation(bool randomConversation);
