@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "Conversations.h"
+#include "ConversationForPed.h"
 
 void CConversations::InjectHooks() {
     RH_ScopedClass(CConversations);
