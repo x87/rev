@@ -1,6 +1,5 @@
 #include "StdInc.h"
 #include "Conversations.h"
-#include "IKChainManager_c.h"
 
 void CConversations::InjectHooks() {
     RH_ScopedClass(CConversations);
@@ -17,67 +16,6 @@ void CConversations::InjectHooks() {
     RH_ScopedInstall(EnableConversation, 0x43A7F0);
     RH_ScopedInstall(StartSettingUpConversation, 0x43A840);
     RH_ScopedInstall(DoneSettingUpConversation, 0x43ADB0, {.reversed = false});
-
-}
-
-void CPedToPlayerConversations::InjectHooks() {
-    RH_ScopedClass(CPedToPlayerConversations);
-    RH_ScopedCategory("Conversations");
-    RH_ScopedInstall(Clear, 0x43AAE0);
-    RH_ScopedInstall(Update, 0x43B0F0, {.reversed = false});
-    RH_ScopedInstall(EndConversation, 0x43AB10);
-}
-
-void CConversationForPed::InjectHooks() {
-    RH_ScopedClass(CConversationForPed);
-    RH_ScopedCategory("Conversations");
-    RH_ScopedInstall(Update, 0x43C190, {.reversed = false});
-    RH_ScopedInstall(IsPlayerInPositionForConversation, 0x43AC40);
-}
-
-void CConversationNode::InjectHooks() {
-    RH_ScopedClass(CConversationNode);
-    RH_ScopedCategory("Conversations");
-    RH_ScopedInstall(ClearRecursively, 0x43A7A0);
-}
-
-
-// 0x43AAE0
-void CPedToPlayerConversations::Clear() {
-    ZoneScoped;
-
-    if (m_State != eP2pState::INACTIVE) {
-        CAEPedSpeechAudioEntity::ReleasePlayerConversation();
-        m_State = eP2pState::INACTIVE;
-    }
-
-    m_pPed                         = nullptr;
-    m_TimeOfLastPlayerConversation = 0;
-}
-
-// 0x43B0F0
-void CPedToPlayerConversations::Update() {
-    plugin::Call<0x43B0F0>();
-}
-
-// 0x43AB10
-void CPedToPlayerConversations::EndConversation() {
-    m_State           = eP2pState::INACTIVE;
-
-    CAEPedSpeechAudioEntity::ReleasePlayerConversation();
-
-    if (m_pPed) {
-        m_pPed->EnablePedSpeech();
-    }
-
-    const auto player = FindPlayerPed(-1);
-    if (g_ikChainMan.IsLooking(player)) {
-        g_ikChainMan.AbortLookAt(player, 250);
-    }
-
-    if (m_pPed && g_ikChainMan.IsLooking(m_pPed)) {
-        return g_ikChainMan.AbortLookAt(m_pPed, 250);
-    }
 }
 
 // 0x43A7B0
@@ -218,23 +156,6 @@ void CConversations::DoneSettingUpConversation(bool bSuppressSubtitles) {
     plugin::Call<0x43ADB0, bool>(bSuppressSubtitles);
 }
 
-inline void CConversationForPed::Clear(bool dontClearNodes) {
-    if (!dontClearNodes) {
-        assert(m_FirstNode >= 0);
-        CConversations::m_Nodes[m_FirstNode].ClearRecursively();
-    }
-    m_FirstNode                 = -1;
-    m_CurrentNode               = -1;
-    m_pPed                      = nullptr;
-    m_LastChange                = 0;
-    m_LastTimeWeWereCloseEnough = 0;
-}
-
-// 0x43C190
-void CConversationForPed::Update() {
-    plugin::CallMethod<0x43C190, CConversationForPed*>(this);
-}
-
 inline CConversationForPed* CConversations::FindConversationForPed(CPed* ped) {
     for (auto& conversation : m_Conversations) {
         if (conversation.m_pPed == ped) {
@@ -242,29 +163,4 @@ inline CConversationForPed* CConversations::FindConversationForPed(CPed* ped) {
         }
     }
     return nullptr;
-}
-
-// 0x43AC40
-bool CConversationForPed::IsPlayerInPositionForConversation(bool randomConversation) {
-    return plugin::CallMethodAndReturn<bool, 0x43AC40, CConversationForPed*, bool>(this, randomConversation);
-}
-
-inline void CConversationNode::Clear() {
-    m_Name[0] = '\0';
-    m_NodeYes = -1;
-    m_NodeNo  = -1;
-    m_Speech  = 0;
-    m_SpeechY = 0;
-    m_SpeechN = 0;
-}
-
-// 0x43A710
-void CConversationNode::ClearRecursively() {
-    if (m_NodeYes >= 0) {
-        CConversations::m_Nodes[m_NodeYes].ClearRecursively();
-    }
-    if (m_NodeNo >= 0) {
-        CConversations::m_Nodes[m_NodeNo].ClearRecursively();
-    }
-    Clear();
 }
