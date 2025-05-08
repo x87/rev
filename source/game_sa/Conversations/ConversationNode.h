@@ -10,8 +10,8 @@ public:
     int32 m_SpeechN;
 
     static void InjectHooks();
-    inline void Clear();
-    inline void ClearRecursively();
+    void Clear();
+    void ClearRecursively();
 };
 
 VALIDATE_SIZE(CConversationNode, 0x18);

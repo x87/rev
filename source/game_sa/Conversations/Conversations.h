@@ -48,16 +48,16 @@ public:
     static void Clear();
     static void RemoveConversationForPed(CPed* ped);
 
-    static void                        Update();
-    static void                        SetUpConversationNode(const char* questionKey, const char* answerYesKey, const char* answerNoKey, int32 questionWAV, int32 answerYesWAV, int32 answerNoWAV);
-    static bool                        IsPlayerInPositionForConversation(CPed* ped, bool randomConversation);
-    static bool                        IsConversationGoingOn();
-    static inline CConversationForPed* FindConversationForPed(CPed* ped);
-    static bool                        IsConversationAtNode(const char* pName, CPed* pPed);
-    static void                        AwkwardSay(int32 whatToSay, CPed* speaker);
-    static void                        EnableConversation(CPed* ped, bool enabled);
-    static void                        StartSettingUpConversation(CPed* ped);
-    static void                        DoneSettingUpConversation(bool bSuppressSubtitles);
+    static void                 Update();
+    static void                 SetUpConversationNode(const char* questionKey, const char* answerYesKey, const char* answerNoKey, int32 questionWAV, int32 answerYesWAV, int32 answerNoWAV);
+    static bool                 IsPlayerInPositionForConversation(CPed* ped, bool randomConversation);
+    static bool                 IsConversationGoingOn();
+    static CConversationForPed* FindConversationForPed(CPed* ped);
+    static bool                 IsConversationAtNode(const char* pName, CPed* pPed);
+    static void                 AwkwardSay(int32 whatToSay, CPed* speaker);
+    static void                 EnableConversation(CPed* ped, bool enabled);
+    static void                 StartSettingUpConversation(CPed* ped);
+    static void                 DoneSettingUpConversation(bool bSuppressSubtitles);
 
     /*
     static void FindFreeNodeSlot();
