@@ -21,7 +21,7 @@ public:
     bool    m_SuppressSubtitles;
 
     static void InjectHooks();
-    inline void Clear(bool dontClearNodes);
+    void        Clear(bool dontClearNodes);
     void        Update();
     bool        IsPlayerInPositionForConversation(bool randomConversation);
 };
