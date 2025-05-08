@@ -157,7 +157,7 @@ void CConversations::DoneSettingUpConversation(bool bSuppressSubtitles) {
     plugin::Call<0x43ADB0, bool>(bSuppressSubtitles);
 }
 
-inline CConversationForPed* CConversations::FindConversationForPed(CPed* ped) {
+CConversationForPed* CConversations::FindConversationForPed(CPed* ped) {
     for (auto& conversation : m_Conversations) {
         if (conversation.m_pPed == ped) {
             return &conversation;

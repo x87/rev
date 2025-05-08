@@ -8,7 +8,7 @@ void CConversationForPed::InjectHooks() {
     RH_ScopedInstall(IsPlayerInPositionForConversation, 0x43AC40);
 }
 
-inline void CConversationForPed::Clear(bool dontClearNodes) {
+void CConversationForPed::Clear(bool dontClearNodes) {
     if (!dontClearNodes) {
         CConversations::m_Nodes[m_FirstNode].ClearRecursively();
     }
