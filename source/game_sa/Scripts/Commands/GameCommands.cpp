@@ -144,7 +144,7 @@ void RegisterMoneyMadeTaxi(float amount) {
     CStats::SetStatValue(STAT_CASH_MADE_IN_A_TAXI, amount);
 }
 
-/// IsExplosionInArea(0356)
+/// IS_EXPLOSION_IN_AREA(0356)
 bool IsExplosionInArea(eExplosionType type, CVector a, CVector b) {
     return CExplosion::TestForExplosionInArea(
         type,
