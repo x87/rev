@@ -164,8 +164,8 @@ void ShakePad(uint32 padId, int time, int intensity) {
 
 /// DRAW_SHADOW(016F)
 void DrawShadow(eShadowTextureType type, CVector coors, float angle, float length, int16 intensity, uint8 r, uint8 g, uint8 b) {
-    float x = sin(angle) * length;
-    float y = cos(angle) * length;
+    const float x = sin(angle) * length;
+    const float y = cos(angle) * length;
     CShadows::StoreShadowToBeRendered(type, coors, -x, y, y, x, intensity, r, g, b);
 }
 
