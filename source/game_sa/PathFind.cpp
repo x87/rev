@@ -114,7 +114,7 @@ void CPathFind::Init() {
     ZoneScoped;
 
     static int32 NumTempExternalNodes = 0; // Unused
-    m_nNumForbiddenAreas = 0;
+    m_nNumNodeSwitches                = 0;
     m_loadAreaRequestPending = false;
 
     for (auto i = 0u; i < NUM_TOTAL_PATH_NODE_AREAS; ++i) {
@@ -132,7 +132,7 @@ void CPathFind::Init() {
 
 // 0x44E4E0
 void CPathFind::ReInit() {
-    m_nNumForbiddenAreas = 0;
+    m_nNumNodeSwitches       = 0;
     m_loadAreaRequestPending = false;
 }
 
@@ -201,7 +201,7 @@ bool CPathFind::ThisNodeWillLeadIntoADeadEnd(CPathNode* startNode, CPathNode* en
 
 // 0x44D3B0
 void CPathFind::TidyUpNodeSwitchesAfterMission() {
-    m_nNumForbiddenAreas = std::min(54u, m_nNumForbiddenAreas); // todo: magic number
+    m_nNumNodeSwitches = std::min(54u, m_nNumNodeSwitches); // todo: magic number
 }
 
 // 0x44D400
@@ -595,19 +595,19 @@ void CPathFind::SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float y
     auto end   = bCars ? m_anNumVehicleNodes[areaId] : m_anNumNodes[areaId];
 
     for (auto nodeIdx = start; nodeIdx < end; ++nodeIdx) {
-        const auto& node     = m_pPathNodes[nodeIdx];
-        const auto  position = node->GetPosition();
+        CPathNode& node     = m_pPathNodes[areaId][nodeIdx];
+        const auto position = node.GetPosition();
 
         if (position.x < xMin || position.x > xMax || position.y < yMin || position.y > yMax || position.z < zMin || position.z > zMax) {
             continue;
         }
-        if (!ThisNodeHasToBeSwitchedOff(node) || node->m_isSwitchedOff == bBackToOriginal ? node->m_isSwitchedOffOriginal : bSwitchOff) {
+        if (!ThisNodeHasToBeSwitchedOff(&node) || node.m_isSwitchedOff == bBackToOriginal ? node.m_isSwitchedOffOriginal : bSwitchOff) {
             continue;
         }
         CPathNode* next1{};
         CPathNode* next2{};
 
-        SwitchOffNodeAndNeighbours(node, next1, &next2, bSwitchOff, bBackToOriginal);
+        SwitchOffNodeAndNeighbours(&node, next1, &next2, bSwitchOff, bBackToOriginal);
 
         while (const auto nextNode = next1) {
             SwitchOffNodeAndNeighbours(nextNode, next1, nullptr, bSwitchOff, bBackToOriginal);
@@ -690,9 +690,9 @@ void CPathFind::LoadPathFindData(RwStream* stream, int32 areaId) {
         node.m_isSwitchedOffOriginal = node.m_isSwitchedOff;
     }
 
-    for (auto i = 0u; i < m_nNumForbiddenAreas; ++i) {
-        auto& area = m_aForbiddenAreas[i];
-        SwitchRoadsOffInAreaForOneRegion(area.xMin, area.xMax, area.yMin, area.yMax, area.zMin, area.zMax, area.enable, area.type, areaId, false);
+    for (auto i = 0u; i < m_nNumNodeSwitches; ++i) {
+        auto& area = m_aNodeSwitches[i];
+        SwitchRoadsOffInAreaForOneRegion(area.xMin, area.xMax, area.yMin, area.yMax, area.zMin, area.zMax, area.isOff, area.isCars, areaId, false);
     }
     for (auto i = 0u; i < NUM_DYNAMIC_LINKS_PER_AREA; ++i) {
         rng::fill(m_aDynamicLinksBaseIds[i], -1);
@@ -994,8 +994,8 @@ CNodeAddress CPathFind::FindNodeClosestToCoorsFavourDirection(CVector pos, ePath
 
 // 0x5D34C0
 bool CPathFind::Save() {
-    CGenericGameStorage::SaveDataToWorkBuffer(m_nNumForbiddenAreas);
-    for (auto& area : std::span{ m_aForbiddenAreas, m_nNumForbiddenAreas }) {
+    CGenericGameStorage::SaveDataToWorkBuffer(m_nNumNodeSwitches);
+    for (auto& area : std::span{ m_aNodeSwitches, m_nNumNodeSwitches }) {
         CGenericGameStorage::SaveDataToWorkBuffer(area);
     }
     return true;
@@ -1003,8 +1003,8 @@ bool CPathFind::Save() {
 
 // 0x5D3500
 bool CPathFind::Load() {
-    CGenericGameStorage::LoadDataFromWorkBuffer(m_nNumForbiddenAreas);
-    for (auto& area : std::span{ m_aForbiddenAreas, m_nNumForbiddenAreas }) {
+    CGenericGameStorage::LoadDataFromWorkBuffer(m_nNumNodeSwitches);
+    for (auto& area : std::span{ m_aNodeSwitches, m_nNumNodeSwitches }) {
         CGenericGameStorage::LoadDataFromWorkBuffer(area);
     }
     return true;
@@ -1280,29 +1280,29 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
         SwitchRoadsOffInAreaForOneRegion(xMin, xMax, yMin, yMax, zMin, zMax, bSwitchOff, bCars, areaId, bBackToOriginal);
     }
 
-    for (auto i = 0u; i < m_nNumForbiddenAreas; ++i) {
-        auto* pArea = &m_aForbiddenAreas[i];
+    for (auto i = 0u; i < m_nNumNodeSwitches; ++i) {
+        auto* pArea = &m_aNodeSwitches[i];
         // If the area is completely inside the area we are switching off, remove it
         if (pArea->xMin >= xMin && pArea->yMin >= yMin && pArea->zMin >= zMin && pArea->xMax <= xMax && pArea->yMax <= yMax && pArea->zMax <= zMax) {
-            if (i < m_nNumForbiddenAreas - 1) {
-                std::memmove(pArea, pArea + 1, sizeof(CForbiddenArea) * (m_nNumForbiddenAreas - i - 1));
+            if (i < m_nNumNodeSwitches - 1) {
+                std::memmove(pArea, pArea + 1, sizeof(CNodesSwitchedOnOrOff) * (m_nNumNodeSwitches - i - 1));
             }
-            --m_nNumForbiddenAreas;
+            --m_nNumNodeSwitches;
             --i;
         }
     }
 
-    if (!bBackToOriginal && m_nNumForbiddenAreas < NUM_PATH_MAP_AREAS) {
-        auto& area  = m_aForbiddenAreas[m_nNumForbiddenAreas];
+    if (!bBackToOriginal && m_nNumNodeSwitches < NUM_PATH_MAP_AREAS) {
+        auto& area  = m_aNodeSwitches[m_nNumNodeSwitches];
         area.xMin   = xMin;
         area.xMax   = xMax;
         area.yMin   = yMin;
         area.yMax   = yMax;
         area.zMin   = zMin;
         area.zMax   = zMax;
-        area.enable = bSwitchOff;
-        area.type   = bCars;
-        m_nNumForbiddenAreas++;
+        area.isOff  = bSwitchOff;
+        area.isCars = bCars;
+        m_nNumNodeSwitches++;
     }
 }
 

@@ -34,7 +34,7 @@ enum eTrafficLevel {
     TRAFFIC_LOW = 3,
 };
 
-class CForbiddenArea {
+class CNodesSwitchedOnOrOff {
 public:
     float xMin;
     float xMax;
@@ -42,10 +42,10 @@ public:
     float yMax;
     float zMin;
     float zMax;
-    bool  enable;
-    uint8 type;
+    bool  isOff;
+    bool  isCars;
 };
-VALIDATE_SIZE(CForbiddenArea, 0x1C);
+VALIDATE_SIZE(CNodesSwitchedOnOrOff, 0x1C);
 
 class CCarPathLinkAddress {
 public:
@@ -212,8 +212,8 @@ public:
     int32                  m_aDynamicLinksIds[NUM_PATH_MAP_AREAS][NUM_DYNAMIC_LINKS_PER_AREA];
     uint32                 m_totalNumNodesInPathFindHashTable; // Number of items in total in all buckets of `m_pathFindHashTable`
     uint32                 m_interiorIDs[NUM_PATH_INTERIOR_AREAS];
-    uint32                 m_nNumForbiddenAreas;
-    CForbiddenArea         m_aForbiddenAreas[NUM_PATH_MAP_AREAS];
+    uint32                 m_nNumNodeSwitches;
+    CNodesSwitchedOnOrOff  m_aNodeSwitches[NUM_PATH_MAP_AREAS];
 
     bool                   m_loadAreaRequestPending; /// Whenever an area to be loaded was requested via `MakeRequestForNodesToBeLoaded`
     // TODO: Replace below with CRect
