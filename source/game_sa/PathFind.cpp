@@ -65,7 +65,7 @@ void CPathFind::InjectHooks() {
     RH_ScopedOverloadedInstall(LoadPathFindData, "FromStream", 0x4529F0, void(CPathFind::*)(RwStream*, int32));
     //RH_ScopedInstall(SwitchPedRoadsOffInArea, 0x452F00);
     RH_ScopedInstall(SwitchRoadsOffInArea, 0x452C80);
-    //RH_ScopedInstall(SwitchRoadsOffInAreaForOneRegion, 0x452820);
+    RH_ScopedInstall(SwitchRoadsOffInAreaForOneRegion, 0x452820);
     RH_ScopedInstall(ComputeRoute, 0x452760, { .reversed = false });
     //RH_ScopedInstall(CompleteNewInterior, 0x452270);
     RH_ScopedInstall(SwitchOffNodeAndNeighbours, 0x452160);
@@ -602,16 +602,16 @@ void CPathFind::SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float y
             if (
                 ThisNodeHasToBeSwitchedOff(node) && node->m_isSwitchedOff != bBackToOriginal ? node->m_isSwitchedOffOriginal : bSwitchOff
             ) {
-                CPathNode*  next1{};
-                CPathNode** next2{};
+                CPathNode* next1{};
+                CPathNode* next2{};
 
-                SwitchOffNodeAndNeighbours(node, next1, next2, bSwitchOff, bBackToOriginal);
+                SwitchOffNodeAndNeighbours(node, next1, &next2, bSwitchOff, bBackToOriginal);
 
                 while (const auto nextNode = next1) {
                     SwitchOffNodeAndNeighbours(nextNode, next1, nullptr, bSwitchOff, bBackToOriginal);
                 }
-                while (const auto nextNode = *next2) {
-                    SwitchOffNodeAndNeighbours(nextNode, next1, nullptr, bSwitchOff, bBackToOriginal);
+                while (const auto nextNode = next2) {
+                    SwitchOffNodeAndNeighbours(nextNode, next2, nullptr, bSwitchOff, bBackToOriginal);
                 }
             }
         }
