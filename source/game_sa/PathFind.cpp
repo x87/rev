@@ -63,7 +63,7 @@ void CPathFind::InjectHooks() {
     //RH_ScopedInstall(AddDynamicLinkBetween2Nodes, 0x4512D0);
     RH_ScopedOverloadedInstall(LoadPathFindData, "Area", 0x452F40, void(CPathFind::*)(int32));
     RH_ScopedOverloadedInstall(LoadPathFindData, "FromStream", 0x4529F0, void(CPathFind::*)(RwStream*, int32));
-    //RH_ScopedInstall(SwitchPedRoadsOffInArea, 0x452F00);
+    RH_ScopedInstall(SwitchPedRoadsOffInArea, 0x452F00);
     RH_ScopedInstall(SwitchRoadsOffInArea, 0x452C80);
     RH_ScopedInstall(SwitchRoadsOffInAreaForOneRegion, 0x452820);
     RH_ScopedInstall(ComputeRoute, 0x452760, { .reversed = false });
@@ -587,8 +587,8 @@ void CPathFind::MarkRoadNodeAsDontWander(float x, float y, float z) {
 void CPathFind::SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bSwitchOff, bool bCars, int areaId, bool bBackToOriginal) {
     assert(areaId >= 0 && areaId < NUM_PATH_MAP_AREAS);
 
-    if (const auto numNodes = m_pPathNodes[areaId]; !numNodes) {
-        return; // No nodes in this area, nothing to switch off
+    if (!IsAreaLoaded(areaId)) {
+        return;
     }
 
     auto start = bCars ? 0 : m_anNumVehicleNodes[areaId];
@@ -598,22 +598,22 @@ void CPathFind::SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float y
         const auto& node     = m_pPathNodes[nodeIdx];
         const auto  position = node->GetPosition();
 
-        if (position.x >= xMin && position.x <= xMax && position.y >= yMin && position.y <= yMax && position.z >= zMin && position.z <= zMax) {
-            if (
-                ThisNodeHasToBeSwitchedOff(node) && node->m_isSwitchedOff != bBackToOriginal ? node->m_isSwitchedOffOriginal : bSwitchOff
-            ) {
-                CPathNode* next1{};
-                CPathNode* next2{};
+        if (position.x < xMin || position.x > xMax || position.y < yMin || position.y > yMax || position.z < zMin || position.z > zMax) {
+            continue;
+        }
+        if (!ThisNodeHasToBeSwitchedOff(node) || node->m_isSwitchedOff == bBackToOriginal ? node->m_isSwitchedOffOriginal : bSwitchOff) {
+            continue;
+        }
+        CPathNode* next1{};
+        CPathNode* next2{};
 
-                SwitchOffNodeAndNeighbours(node, next1, &next2, bSwitchOff, bBackToOriginal);
+        SwitchOffNodeAndNeighbours(node, next1, &next2, bSwitchOff, bBackToOriginal);
 
-                while (const auto nextNode = next1) {
-                    SwitchOffNodeAndNeighbours(nextNode, next1, nullptr, bSwitchOff, bBackToOriginal);
-                }
-                while (const auto nextNode = next2) {
-                    SwitchOffNodeAndNeighbours(nextNode, next2, nullptr, bSwitchOff, bBackToOriginal);
-                }
-            }
+        while (const auto nextNode = next1) {
+            SwitchOffNodeAndNeighbours(nextNode, next1, nullptr, bSwitchOff, bBackToOriginal);
+        }
+        while (const auto nextNode = next2) {
+            SwitchOffNodeAndNeighbours(nextNode, next2, nullptr, bSwitchOff, bBackToOriginal);
         }
     }
 }
@@ -1293,7 +1293,7 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
     }
 
     if (!bBackToOriginal && m_nNumForbiddenAreas < NUM_PATH_MAP_AREAS) {
-        auto& area     = m_aForbiddenAreas[m_nNumForbiddenAreas];
+        auto& area  = m_aForbiddenAreas[m_nNumForbiddenAreas];
         area.xMin   = xMin;
         area.xMax   = xMax;
         area.yMin   = yMin;
@@ -1304,4 +1304,9 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
         area.type   = bCars;
         m_nNumForbiddenAreas++;
     }
+}
+
+// 0x452F00
+void CPathFind::SwitchPedRoadsOffInArea(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bSwitchOff, bool bBackToOriginal) {
+    SwitchRoadsOffInArea(xMin, xMax, yMin, yMax, zMin, zMax, bSwitchOff, false, bBackToOriginal);
 }
