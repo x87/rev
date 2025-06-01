@@ -36,14 +36,14 @@ enum eTrafficLevel {
 
 class CForbiddenArea {
 public:
-    float m_fXMin;
-    float m_fXMax;
-    float m_fYMin;
-    float m_fYMax;
-    float m_fZMin;
-    float m_fZMax;
-    bool  m_bEnable;
-    uint8 m_nType;
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float zMin;
+    float zMax;
+    bool  enable;
+    uint8 type;
 };
 VALIDATE_SIZE(CForbiddenArea, 0x1C);
 
@@ -137,7 +137,7 @@ public:
     uint32 m_bWaterNode : 1;
 
     // byte 1
-    uint32 m_isOriginallyOnDeadEnd : 1;
+    uint32 m_isSwitchedOffOriginal : 1;
     uint32 unk1 : 1; // not used in paths data files
     uint32 m_bDontWander : 1;
     uint32 unk2 : 1; // not used in paths data files
@@ -202,8 +202,7 @@ public:
     uint8*                 m_pLinkLengths[NUM_TOTAL_PATH_NODE_AREAS]; // 0xB64
     CPathIntersectionInfo* m_pPathIntersections[NUM_TOTAL_PATH_NODE_AREAS]; // 0xC84
     CCarPathLinkAddress*   m_pNaviLinks[NUM_PATH_MAP_AREAS]; // 0xDA4
-    void*                  m_aUnused[22]; // 0xEA4
-    uint32                 m_aUnk[NUM_PATH_MAP_AREAS - 22]; // 0xEFC
+    void*                  m_aTempNodes[NUM_PATH_MAP_AREAS];                   // 0xEA4
     uint32                 m_anNumNodes[NUM_TOTAL_PATH_NODE_AREAS]; // 0xFA4
     uint32                 m_anNumVehicleNodes[NUM_TOTAL_PATH_NODE_AREAS]; // 0x10C4
     uint32                 m_anNumPedNodes[NUM_TOTAL_PATH_NODE_AREAS]; // 0x11E4
@@ -290,8 +289,8 @@ public:
     bool ThisNodeHasToBeSwitchedOff(CPathNode* node);
     size_t CountNeighboursToBeSwitchedOff(const CPathNode& node);
     void SwitchOffNodeAndNeighbours(CPathNode* node, CPathNode*& outNext1, CPathNode** outNext2, bool lowTraffic, bool backToOriginal);
-    void SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bLowTraffic, uint8 nodeType, int areaId, uint8 bUnused);
-    void SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bLowTraffic, uint8 nodeType, bool bForbidden);
+    void SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bSwitchOff, bool bCars, int areaId, bool bBackToOriginal);
+    void SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bSwitchOff, bool bCars, bool bBackToOriginal);
     void SwitchPedRoadsOffInArea(float xMin, float xMax, float yMin, float yMax, float zMin, float zMax, bool bLowTraffic, uint8 nodeType);
     void LoadPathFindData(RwStream* stream, int32 areaId);
     void LoadPathFindData(int32 areaId);
