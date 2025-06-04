@@ -1282,14 +1282,22 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
 
     for (auto i = 0u; i < m_nNumNodeSwitches; ++i) {
         auto* pArea = &m_aNodeSwitches[i];
-        // If the area is completely inside the area we are switching off, remove it
-        if (pArea->xMin >= xMin && pArea->yMin >= yMin && pArea->zMin >= zMin && pArea->xMax <= xMax && pArea->yMax <= yMax && pArea->zMax <= zMax) {
-            if (i < m_nNumNodeSwitches - 1) {
-                std::memmove(pArea, pArea + 1, sizeof(CNodesSwitchedOnOrOff) * (m_nNumNodeSwitches - i - 1));
-            }
-            --m_nNumNodeSwitches;
-            --i;
+        // If the existing area is completely inside the area we are switching off, remove it
+        if (pArea->xMin < xMin || pArea->yMin < yMin || pArea->zMin < zMin || pArea->xMax > xMax || pArea->yMax > yMax || pArea->zMax > zMax) {
+            continue;
         }
+
+        for (auto j = i; j < m_nNumNodeSwitches - 1; ++j) {
+#ifdef FIX_BUGS
+            m_aNodeSwitches[j] = m_aNodeSwitches[j + 1];
+#else
+            // R* bug, they messed up with the index
+            m_aNodeSwitches[i] = m_aNodeSwitches[i + 1];
+#endif
+        }
+
+        --m_nNumNodeSwitches;
+        --i;
     }
 
     if (!bBackToOriginal && m_nNumNodeSwitches < NUM_PATH_MAP_AREAS) {
