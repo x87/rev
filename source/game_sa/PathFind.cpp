@@ -1282,6 +1282,23 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
 
     for (auto i = 0u; i < m_nNumNodeSwitches; ++i) {
         auto* pArea = &m_aNodeSwitches[i];
+
+#ifdef FIX_BUGS
+        // NOTSA
+
+        // some missions create both types of switches at the same area, so we store them separately
+        if (pArea->isCars != bCars) {
+            continue;
+        }
+
+        // avoid creating stray areas, potentially leaving no space for important areas later in game
+        // ideally, the script would use SWITCH_ROADS_BACK_TO_ORIGINAL or SWITCH_PED_ROADS_BACK_TO_ORIGINAL but that's not always the case
+        // so we consider toggling the same area as "back to original"
+        if (pArea->xMin == xMin && pArea->yMin == yMin && pArea->zMin == zMin && pArea->xMax == xMax && pArea->yMax == yMax && pArea->zMax == zMax && pArea->isOff != bSwitchOff) {
+            bBackToOriginal = true;
+        }
+#endif
+
         // If the existing area is completely inside the area we are switching off, remove it
         if (pArea->xMin < xMin || pArea->yMin < yMin || pArea->zMin < zMin || pArea->xMax > xMax || pArea->yMax > yMax || pArea->zMax > zMax) {
             continue;
