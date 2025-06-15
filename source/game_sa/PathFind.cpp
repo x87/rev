@@ -7,6 +7,8 @@
 #include "StdInc.h"
 #include "PathFind.h"
 
+#include <reversiblebugfixes/Bugs.hpp>
+
 // TODO: Move into the class itself
 CVector& s_pathsNeededPosn = *(CVector*)0x977B70;
 bool&    s_bLoadPathsNeeded  = *(bool*)0x96F030;
@@ -1283,21 +1285,19 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
     for (auto i = 0u; i < m_nNumNodeSwitches; ++i) {
         auto* pArea = &m_aNodeSwitches[i];
 
-#ifdef FIX_BUGS
-        // NOTSA
+        if (notsa::bugfixes::CPathFind_SwitchRoadsOffInArea_StrayAreas) {
+            // some missions create both types of switches at the same area, so we store them separately
+            if (pArea->isCars != bCars) {
+                continue;
+            }
 
-        // some missions create both types of switches at the same area, so we store them separately
-        if (pArea->isCars != bCars) {
-            continue;
+            // avoid creating stray areas, potentially leaving no space for important areas later in game
+            // ideally, the script would use SWITCH_ROADS_BACK_TO_ORIGINAL or SWITCH_PED_ROADS_BACK_TO_ORIGINAL but that's not always the case
+            // so we consider toggling the same area as "back to original"
+            if (pArea->xMin == xMin && pArea->yMin == yMin && pArea->zMin == zMin && pArea->xMax == xMax && pArea->yMax == yMax && pArea->zMax == zMax && pArea->isOff != bSwitchOff) {
+                bBackToOriginal = true;
+            }
         }
-
-        // avoid creating stray areas, potentially leaving no space for important areas later in game
-        // ideally, the script would use SWITCH_ROADS_BACK_TO_ORIGINAL or SWITCH_PED_ROADS_BACK_TO_ORIGINAL but that's not always the case
-        // so we consider toggling the same area as "back to original"
-        if (pArea->xMin == xMin && pArea->yMin == yMin && pArea->zMin == zMin && pArea->xMax == xMax && pArea->yMax == yMax && pArea->zMax == zMax && pArea->isOff != bSwitchOff) {
-            bBackToOriginal = true;
-        }
-#endif
 
         // If the existing area is completely inside the area we are switching off, remove it
         if (pArea->xMin < xMin || pArea->yMin < yMin || pArea->zMin < zMin || pArea->xMax > xMax || pArea->yMax > yMax || pArea->zMax > zMax) {
@@ -1305,12 +1305,12 @@ void CPathFind::SwitchRoadsOffInArea(float xMin, float xMax, float yMin, float y
         }
 
         for (auto j = i; j < m_nNumNodeSwitches - 1; ++j) {
-#ifdef FIX_BUGS
-            m_aNodeSwitches[j] = m_aNodeSwitches[j + 1];
-#else
-            // R* bug, they messed up with the index
-            m_aNodeSwitches[i] = m_aNodeSwitches[i + 1];
-#endif
+            if (notsa::bugfixes::CPathFind_SwitchRoadsOffInArea_StrayAreas) {
+                m_aNodeSwitches[j] = m_aNodeSwitches[j + 1];
+            } else {
+                // R* bug, they messed up with the index
+                m_aNodeSwitches[i] = m_aNodeSwitches[i + 1];
+            }
         }
 
         --m_nNumNodeSwitches;

@@ -55,4 +55,9 @@ inline const ReversibleBugFix CCarCtrl_RemoveDistantCars_UseAfterFree{
     .Description = "Fix user-after-free of vehicles (possibly) deleted by PossiblyRemoveVehicle",
     .Credit      = "Pirulax"
 };
+inline const ReversibleBugFix CPathFind_SwitchRoadsOffInArea_StrayAreas{
+    .Name        = "CPathFind::SwitchRoadsOffInArea Stray-Areas",
+    .Description = "Fix multiple issues related to saving unused path areas after missions",
+    .Credit      = "Contributors"
+};
 };
