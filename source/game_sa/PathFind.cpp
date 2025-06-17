@@ -603,7 +603,7 @@ void CPathFind::SwitchRoadsOffInAreaForOneRegion(float xMin, float xMax, float y
         if (position.x < xMin || position.x > xMax || position.y < yMin || position.y > yMax || position.z < zMin || position.z > zMax) {
             continue;
         }
-        if (!ThisNodeHasToBeSwitchedOff(&node) || node.m_isSwitchedOff == bBackToOriginal ? node.m_isSwitchedOffOriginal : bSwitchOff) {
+        if (!ThisNodeHasToBeSwitchedOff(&node) || node.m_isSwitchedOff == (bBackToOriginal ? node.m_isSwitchedOffOriginal : bSwitchOff)) {
             continue;
         }
         CPathNode* next1{};
