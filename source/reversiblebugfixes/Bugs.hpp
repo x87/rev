@@ -74,3 +74,4 @@ inline const ReversibleBugFix CPathFind_SwitchRoadsOffInArea_StrayAreas{
     .Description = "Fix multiple issues related to saving unused path areas after missions",
     .Credit      = "Contributors"
 };
+};
